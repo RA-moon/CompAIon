@@ -85,6 +85,17 @@
       android:layout_marginTop="8dp"
       android:text="Ready when you are." />
 
+    <TextView
+      android:id="@+id/legalDisclaimerText"
+      style="@style/TextAppearance.CompAIon.Body"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="16dp"
+      android:lineSpacingExtra="2dp"
+      android:text="@string/legal_disclaimer_agb"
+      android:textColor="@color/ap_text_secondary"
+      android:textSize="12sp" />
+
   </LinearLayout>
 
 </FrameLayout>

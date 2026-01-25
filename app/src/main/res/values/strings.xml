@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="app_name">CompAIon</string>
+  <string name="legal_disclaimer_agb">Disclaimer (AGB, effective January 24, 2026): AI output may be incorrect. Verify anything important. Do not rely on this app for medical, legal, financial, or safety-critical decisions. Provided AS IS; use at your own risk.</string>
+</resources>
