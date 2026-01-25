@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <declare-styleable name="AnimatedGradientTextView">
+    <attr name="gradientReverse" format="boolean" />
+    <attr name="gradientDuration" format="integer" />
+  </declare-styleable>
+</resources>

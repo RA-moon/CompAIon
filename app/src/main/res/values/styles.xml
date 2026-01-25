@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <style name="Widget.CompAIon.TextView" parent="Widget.AppCompat.TextView">
+    <item name="android:fontFamily">@font/special_elite</item>
+    <item name="android:textColor">@color/ap_text_secondary</item>
+    <item name="android:lineSpacingExtra">4dp</item>
+  </style>
+
+  <style name="TextAppearance.CompAIon.Heading1" parent="TextAppearance.MaterialComponents.Headline5">
+    <item name="android:fontFamily">@font/special_elite</item>
+    <item name="android:textSize">28sp</item>
+    <item name="android:textAllCaps">true</item>
+    <item name="android:letterSpacing">0.08</item>
+  </style>
+
+  <style name="TextAppearance.CompAIon.Heading2" parent="TextAppearance.MaterialComponents.Headline6">
+    <item name="android:fontFamily">@font/special_elite</item>
+    <item name="android:textSize">20sp</item>
+    <item name="android:textAllCaps">true</item>
+    <item name="android:letterSpacing">0.06</item>
+  </style>
+
+  <style name="TextAppearance.CompAIon.Body" parent="TextAppearance.MaterialComponents.Body2">
+    <item name="android:fontFamily">@font/special_elite</item>
+    <item name="android:textSize">16sp</item>
+    <item name="android:textColor">@color/ap_text_secondary</item>
+    <item name="android:letterSpacing">0.02</item>
+  </style>
+
+  <style name="Widget.CompAIon.PrimaryButton" parent="Widget.MaterialComponents.Button">
+    <item name="android:background">@drawable/bg_button_primary</item>
+    <item name="android:backgroundTint">@null</item>
+    <item name="backgroundTint">@null</item>
+    <item name="android:textColor">@color/ap_text_primary</item>
+    <item name="android:textAllCaps">true</item>
+    <item name="android:fontFamily">@font/special_elite</item>
+    <item name="android:letterSpacing">0.08</item>
+    <item name="android:paddingTop">14dp</item>
+    <item name="android:paddingBottom">14dp</item>
+  </style>
+</resources>

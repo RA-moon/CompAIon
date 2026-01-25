@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.CompAIon" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:colorBackground">@color/ap_background_base</item>
+        <item name="android:windowBackground">@color/ap_background_base</item>
+        <item name="android:statusBarColor">@color/ap_background_base</item>
+        <item name="android:navigationBarColor">@color/ap_background_base</item>
+        <item name="colorPrimary">@color/ap_accent_primary</item>
+        <item name="colorPrimaryVariant">@color/ap_accent_primary</item>
+        <item name="colorSecondary">@color/ap_accent_secondary</item>
+        <item name="colorOnPrimary">@color/ap_text_primary</item>
+        <item name="android:textColorPrimary">@color/ap_text_primary</item>
+        <item name="android:textColorSecondary">@color/ap_text_secondary</item>
+        <item name="android:textViewStyle">@style/Widget.CompAIon.TextView</item>
+        <item name="materialButtonStyle">@style/Widget.CompAIon.PrimaryButton</item>
+    </style>
+</resources>

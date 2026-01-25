@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <color name="ap_background_base">#000000</color>
+  <color name="ap_border_panel">#1FFFFFFF</color>
+  <color name="ap_border_strong">#59FFFFFF</color>
+  <color name="ap_text_primary">#FFFFFF</color>
+  <color name="ap_text_secondary">#DBFFFFFF</color>
+  <color name="ap_accent_primary">#FF0040</color>
+  <color name="ap_accent_secondary">#00C0FF</color>
+  <color name="ap_accent_tertiary">#FFD400</color>
+  <color name="icon_background_dark">#000000</color>
+  <color name="icon_background_light">#FFFFFF</color>
+</resources>

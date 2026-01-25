@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent">
+
+  <View
+    android:id="@+id/bgGradient"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_space"
+    android:alpha="0.75" />
+
+  <io.github.sceneview.SceneView
+    android:id="@+id/valuesScene"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/transparent"
+    android:alpha="0.9"
+    android:importantForAccessibility="no"
+    android:contentDescription="@null" />
+
+  <View
+    android:id="@+id/bgHaze"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_haze" />
+
+  <LinearLayout
+    android:id="@+id/contentPanel"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_gravity="center"
+    android:layout_margin="24dp"
+    android:background="@drawable/bg_panel"
+    android:elevation="8dp"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <com.example.offlinevoice.ui.AnimatedGradientTextView
+      android:id="@+id/stateText"
+      style="@style/TextAppearance.CompAIon.Heading1"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="IDLE" />
+
+    <Button
+      android:id="@+id/pttButton"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="20dp"
+      android:text="Hold to Talk (PTT)" />
+
+    <com.example.offlinevoice.ui.AnimatedGradientTextView
+      android:id="@+id/transcriptLabel"
+      style="@style/TextAppearance.CompAIon.Heading2"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="24dp"
+      android:text="Transcript"
+      app:gradientReverse="true" />
+
+    <TextView
+      android:id="@+id/transcriptText"
+      style="@style/TextAppearance.CompAIon.Body"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="8dp"
+      android:text="Waiting for audio..." />
+
+    <com.example.offlinevoice.ui.AnimatedGradientTextView
+      android:id="@+id/answerLabel"
+      style="@style/TextAppearance.CompAIon.Heading2"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="20dp"
+      android:text="Answer"
+      app:gradientReverse="true" />
+
+    <TextView
+      android:id="@+id/answerText"
+      style="@style/TextAppearance.CompAIon.Body"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="8dp"
+      android:text="Ready when you are." />
+
+  </LinearLayout>
+
+</FrameLayout>
