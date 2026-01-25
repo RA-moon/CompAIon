@@ -1,6 +1,11 @@
-# CompAIon — Offline Voice Assistant (Android)
+# CompAIon — Offline AI for Android
 
-CompAIon is an offline-first Android voice assistant that runs speech-to-text, LLM inference, and text-to-speech on-device. It is wired for the Astral Pirates control stack and mirrors the visual language used in the Control deck (`https://astralpirates.com/gangway/engineering/control`).
+CompAIon is an offline-first Android assistant that runs speech-to-text, LLM inference, and text-to-speech fully on-device. It is wired for the Astral Pirates control stack and mirrors the visual language used in the Control deck (`https://astralpirates.com/gangway/engineering/control`).
+
+## GitHub Project Description (Copy/Paste)
+- Short description: `Offline AI assistant for Android: on-device Whisper STT + MLC LLM + Android TTS, with a stylized control-deck UI.`
+- Topics: `android`, `offline-ai`, `on-device-ml`, `whisper`, `mlc-llm`, `tts`, `kotlin`, `jni`, `filament`
+- Extended description: `docs/PROJECT_DESCRIPTION.md`
 
 ## What It Does Today
 - Push-to-talk (PTT) recording at 16 kHz mono PCM16.
@@ -77,6 +82,9 @@ To install the packaged model via Gradle:
 ```bash
 ./gradlew :app:installDebugWithModel
 ```
+
+Detailed CPU/GPU setup notes and the full Android MLC runbook live in:
+- `docs/MLC_ANDROID_CPU_RUNBOOK.md`
 
 Useful related tasks:
 

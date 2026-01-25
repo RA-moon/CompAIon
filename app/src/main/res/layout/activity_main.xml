@@ -16,7 +16,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@android:color/transparent"
-    android:alpha="0.9"
+    android:alpha="1.0"
     android:importantForAccessibility="no"
     android:contentDescription="@null" />
 
@@ -24,7 +24,8 @@
     android:id="@+id/bgHaze"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/bg_haze" />
+    android:background="@drawable/bg_haze"
+    android:alpha="0.0" />
 
   <LinearLayout
     android:id="@+id/contentPanel"

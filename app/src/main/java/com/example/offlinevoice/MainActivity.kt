@@ -23,8 +23,10 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import android.util.Log
 import com.google.android.filament.Box
+import com.google.android.filament.ColorGrading
 import com.google.android.filament.MaterialInstance
 import com.google.android.filament.Camera
+import com.google.android.filament.ToneMapper
 import com.google.android.filament.View
 import com.google.android.filament.gltfio.MaterialProvider
 import com.example.offlinevoice.databinding.ActivityMainBinding
@@ -55,6 +57,7 @@ class MainActivity : AppCompatActivity() {
   private var menuRotationAnimator: ValueAnimator? = null
   private val menuPartRotationDeg = mutableMapOf<ModelNode.RenderableNode, Float>()
   private val menuPartAnimators = mutableMapOf<ModelNode.RenderableNode, ValueAnimator>()
+  private val menuPartBaseRotation = mutableMapOf<ModelNode.RenderableNode, Rotation>()
   private var menuPartTop: ModelNode.RenderableNode? = null
   private var menuPartCenter: ModelNode.RenderableNode? = null
   private var menuPartBottom: ModelNode.RenderableNode? = null
@@ -96,9 +99,9 @@ class MainActivity : AppCompatActivity() {
   private val gyroBaselineRecenter = 0.015f
   private val valuesColorSaturation = 0.3f
   private val valuesColorLightness = 0.1f
-  private val valuesAlpha = 0.5f
+  private val valuesAlpha = 0.06f
   private val valuesMetallic = 0.7f
-  private val valuesRoughness = 0.12f
+  private val valuesRoughness = 0.08f
   private val valuesReflectance = 0.9f
   private val valuesIor = 1.45f
   private val valuesSheenColor = floatArrayOf(0.6392f, 0.1608f, 0.7020f)
@@ -106,6 +109,8 @@ class MainActivity : AppCompatActivity() {
   private val valuesClearCoat = 1f
   private val valuesClearCoatRoughness = 0f
   private val valuesEnvMapIntensity = 1f
+  private val valuesAttenuationDistanceMultiplier = 1.6f
+  private val valuesAttenuationColorStrength = 0.2f
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -211,6 +216,10 @@ class MainActivity : AppCompatActivity() {
       clearColor = floatArrayOf(0f, 0f, 0f, 0f)
     }
     sceneView.environment = SceneView.createEnvironment(sceneView.environmentLoader, isOpaque = false)
+    sceneView.view.colorGrading = ColorGrading.Builder()
+      .toneMapper(ToneMapper.ACES())
+      .build(sceneView.engine)
+    sceneView.cameraNode.setExposure(2.0f)
 
     tuneAstralLighting(sceneView)
 
@@ -226,6 +235,11 @@ class MainActivity : AppCompatActivity() {
     valuesBaseSize = maxExtent(valuesNode)
     valuesMaterial = buildValuesMaterial(sceneView, valuesBaseSize)
     valuesMaterial?.let { valuesNode.setMaterialInstance(it) }
+    valuesNode.renderableNodes.forEach {
+      it.setPriority(PRIORITY_LAST)
+      it.setBlendOrder(64_000)
+      it.setCulling(false)
+    }
 
     val menuInstance = sceneView.modelLoader.createModelInstance("models/menu.glb")
     val menuNode = ModelNode(
@@ -253,7 +267,7 @@ class MainActivity : AppCompatActivity() {
       true
     }
 
-    sceneView.cameraNode.position = Position(0f, 0f, 10f)
+    sceneView.cameraNode.position = Position(0f, 0f, 20f)
     sceneView.cameraNode.lookAt(Position(0f, 0f, 0f))
 
     var startNanos = 0L
@@ -284,9 +298,10 @@ class MainActivity : AppCompatActivity() {
   }
 
   private fun tuneAstralLighting(sceneView: SceneView) {
-    sceneView.indirectLight?.intensity = 62_000f
+    // Match the web lighting ratios (hemi ~0.6, key ~1.0, fill ~0.35).
+    sceneView.indirectLight?.intensity = 14_400f
     sceneView.mainLightNode?.apply {
-      intensity = 54_000f
+      intensity = 24_000f
       color = Color(0.92f, 0.96f, 1f, 1f)
       lightDirection = Direction(x = 0.3f, y = -0.6f, z = -1f)
     }
@@ -336,7 +351,12 @@ class MainActivity : AppCompatActivity() {
       lightness = valuesColorLightness
     )
     val targetThickness = kotlin.math.max(0.2f, baseSize * 0.35f)
-    val tintDistance = kotlin.math.max(0.75f, baseSize * 0.9f)
+    val tintDistance = kotlin.math.max(0.75f, baseSize * 0.9f) * valuesAttenuationDistanceMultiplier
+    val attenuationColor = floatArrayOf(
+      baseColor[0] * valuesAttenuationColorStrength,
+      baseColor[1] * valuesAttenuationColorStrength,
+      baseColor[2] * valuesAttenuationColorStrength,
+    )
 
     val instance = sceneView.materialLoader.createUbershaderInstance(
       config = key,
@@ -376,7 +396,7 @@ class MainActivity : AppCompatActivity() {
     instance.safeSetParameter("clearCoatRoughnessFactor", valuesClearCoatRoughness)
     instance.safeSetParameter("thicknessFactor", targetThickness)
     instance.safeSetParameter("attenuationDistance", tintDistance)
-    instance.safeSetParameter("attenuationColor", baseColor[0], baseColor[1], baseColor[2])
+    instance.safeSetParameter("attenuationColor", attenuationColor[0], attenuationColor[1], attenuationColor[2])
     instance.safeSetParameter("envMapIntensity", valuesEnvMapIntensity)
 
     return instance
@@ -394,12 +414,17 @@ class MainActivity : AppCompatActivity() {
 
     colorHue = (colorHue + dt * colorSpeed) % 1f
     val base = hslToRgb(colorHue, valuesColorSaturation, valuesColorLightness)
+    val attenuation = floatArrayOf(
+      base[0] * valuesAttenuationColorStrength,
+      base[1] * valuesAttenuationColorStrength,
+      base[2] * valuesAttenuationColorStrength,
+    )
 
     material.safeSetParameter("sheenColorFactor", sheen[0], sheen[1], sheen[2])
     // Some ubershader variants expose sheenColor rather than sheenColorFactor.
     material.safeSetParameter("sheenColor", sheen[0], sheen[1], sheen[2])
     material.safeSetParameter("baseColorFactor", base[0], base[1], base[2], valuesAlpha)
-    material.safeSetParameter("attenuationColor", base[0], base[1], base[2])
+    material.safeSetParameter("attenuationColor", attenuation[0], attenuation[1], attenuation[2])
   }
 
   private fun defaultSheenHueSpeed(nowMs: Long = System.currentTimeMillis()): Float {
@@ -655,8 +680,12 @@ class MainActivity : AppCompatActivity() {
     menuPartAnimators.keys.filterNot { it in activeParts }.forEach { part ->
       menuPartAnimators.remove(part)?.cancel()
       menuPartRotationDeg.remove(part)
+      menuPartBaseRotation.remove(part)
     }
     activeParts.forEach { part ->
+      if (!menuPartBaseRotation.containsKey(part)) {
+        menuPartBaseRotation[part] = part.rotation
+      }
       if (!menuPartRotationDeg.containsKey(part)) {
         menuPartRotationDeg[part] = 0f
       }
@@ -666,7 +695,8 @@ class MainActivity : AppCompatActivity() {
   private fun applyMenuPartRotations(menuNode: ModelNode) {
     menuNode.renderableNodes.forEach { part ->
       val rotX = menuPartRotationDeg[part] ?: 0f
-      part.rotation = Rotation(rotX, 0f, 0f)
+      val base = menuPartBaseRotation[part] ?: Rotation(0f, 0f, 0f)
+      part.rotation = Rotation(base.x + rotX, base.y, base.z)
     }
   }
 

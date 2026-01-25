@@ -72,7 +72,7 @@ tasks.named("preBuild") {
 }
 
 val mlcModelId = "Qwen2.5-0.5B-Instruct-q4f16_1-MLC"
-val mlcModelLib = "qwen2_q4f16_1_baba969d0bfeac5381e90160d305dff2"
+val mlcModelLib = "qwen2_q4f16_1_95967267c464e10967be161a66e856d4"
 val mlcModelCacheDir = File(
   System.getProperty("user.home"),
   ".cache/mlc_llm/model_weights/hf/mlc-ai/$mlcModelId"
@@ -148,6 +148,15 @@ val installMlcModel by tasks.registering {
     if (mlcAppConfig.exists()) {
       exec { commandLine("adb", "push", mlcAppConfig.absolutePath, "$deviceRoot/mlc-app-config.repo.json") }
     }
+    val permissionScript =
+      """
+      set -e
+      MODEL_ROOT="$deviceRoot"
+      chmod 755 "${'$'}MODEL_ROOT" || true
+      find "${'$'}MODEL_ROOT" -type d -exec chmod 755 {} + || true
+      find "${'$'}MODEL_ROOT" -type f -exec chmod 644 {} + || true
+      """.trimIndent()
+    exec { commandLine("adb", "shell", "sh", "-c", permissionScript) }
   }
 }
 

@@ -33,17 +33,28 @@ class MlcEngine(private val context: Context) {
   fun resolveModel(): ModelPaths {
     val roots = modelRoots()
     roots.forEach { Log.d(tag, "resolveModel root=${it.absolutePath}") }
-    val match = roots.firstNotNullOfOrNull { root ->
+    val candidates = roots.flatMap { root ->
       root.listFiles()
-        ?.firstOrNull { it.isDirectory && File(it, "mlc-chat-config.json").exists() }
-        ?.let { modelDir -> root to modelDir }
-    } ?: throw IllegalStateException(
+        ?.filter { it.isDirectory && File(it, "mlc-chat-config.json").exists() }
+        ?.map { modelDir -> root to modelDir }
+        .orEmpty()
+    }
+    if (candidates.isEmpty()) {
+      throw IllegalStateException(
       "Kein MLC-Modell gefunden.\n" +
         "Erwartet:\n" +
         "1) /Android/data/${context.packageName}/files/models/llm/<model>/mlc-chat-config.json\n" +
         "2) ${context.filesDir}/models/llm/<model>/mlc-chat-config.json"
     )
+    }
+    val preferredIds = roots.flatMap { preferredModelIds(it) }.distinct()
+    val match = preferredIds.firstNotNullOfOrNull { preferredId ->
+      candidates.firstOrNull { (_, dir) -> dir.name == preferredId }
+    } ?: candidates.first()
     val (root, modelDir) = match
+    if (preferredIds.isNotEmpty()) {
+      Log.d(tag, "resolveModel preferredIds=${preferredIds.joinToString()}")
+    }
     Log.d(tag, "resolveModel modelDir=${modelDir.absolutePath}")
     val modelLib = resolveModelLib(root, modelDir)
     Log.d(tag, "resolveModel modelLib=$modelLib")
@@ -133,12 +144,7 @@ class MlcEngine(private val context: Context) {
   private fun resolveModelLib(root: File, modelDir: File): String {
     val modelId = modelDir.name
     Log.d(tag, "resolveModelLib modelId=$modelId")
-    val appConfigCandidates = listOf(
-      File(root, "mlc-app-config.json"),
-      File(context.getExternalFilesDir(null), "mlc-app-config.json"),
-      File(context.filesDir, "mlc-app-config.json")
-    )
-    for (cfg in appConfigCandidates) {
+    for (cfg in appConfigCandidates(root)) {
       if (!cfg.exists()) continue
       Log.d(tag, "resolveModelLib reading ${cfg.absolutePath}")
       resolveModelLibFromJson(cfg.readText(), modelId)?.let { return it }
@@ -171,6 +177,41 @@ class MlcEngine(private val context: Context) {
       }
     }
     return null
+  }
+
+  private fun appConfigCandidates(root: File? = null): List<File> {
+    val candidates = mutableListOf<File>()
+    if (root != null) candidates += File(root, "mlc-app-config.json")
+    candidates += File(context.getExternalFilesDir(null), "mlc-app-config.json")
+    candidates += File(context.filesDir, "mlc-app-config.json")
+    return candidates
+  }
+
+  private fun preferredModelIds(root: File): List<String> {
+    val ids = mutableListOf<String>()
+    for (cfg in appConfigCandidates(root)) {
+      if (!cfg.exists()) continue
+      runCatching { parseModelIds(cfg.readText()) }
+        .getOrDefault(emptyList())
+        .forEach { ids += it }
+    }
+    runCatching {
+      context.assets.open("mlc-app-config.json").bufferedReader().use { it.readText() }
+    }.getOrNull()?.let { jsonText ->
+      ids += parseModelIds(jsonText)
+    }
+    return ids
+  }
+
+  private fun parseModelIds(jsonText: String): List<String> {
+    val json = JSONObject(jsonText)
+    val list = json.optJSONArray("model_list") ?: return emptyList()
+    val ids = mutableListOf<String>()
+    for (i in 0 until list.length()) {
+      val id = list.getJSONObject(i).optString("model_id")
+      if (id.isNotBlank()) ids += id
+    }
+    return ids
   }
 
   private fun ensureNativeRuntimePresent() {
