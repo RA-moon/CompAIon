@@ -8,6 +8,7 @@ import android.graphics.Shader
 import android.util.AttributeSet
 import android.view.animation.LinearInterpolator
 import androidx.appcompat.widget.AppCompatTextView
+import androidx.core.content.res.ResourcesCompat
 import com.example.offlinevoice.R
 import kotlin.math.max
 
@@ -45,6 +46,7 @@ class AnimatedGradientTextView @JvmOverloads constructor(
       durationMs = getInt(R.styleable.AnimatedGradientTextView_gradientDuration, 12000).toLong()
       recycle()
     }
+    ResourcesCompat.getFont(context, R.font.special_elite)?.let { typeface = it }
   }
 
   override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {

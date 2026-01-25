@@ -19,6 +19,7 @@ class MlcEngine(private val context: Context) {
 
   private val engine = MLCEngine()
   private var loadedKey: String? = null
+  private var nativeRuntimeLoaded = false
 
   private fun modelRoots(): List<File> {
     val roots = listOf(
@@ -176,6 +177,7 @@ class MlcEngine(private val context: Context) {
     try {
       Log.d(tag, "System.loadLibrary(tvm4j_runtime_packed)")
       System.loadLibrary("tvm4j_runtime_packed")
+      nativeRuntimeLoaded = true
       return
     } catch (_: UnsatisfiedLinkError) {
       Log.w(tag, "System.loadLibrary failed, falling back to file check")
@@ -191,6 +193,7 @@ class MlcEngine(private val context: Context) {
           "Baue mlc4j (aus mlc-llm) und stelle sicher, dass die Ausgabe in der App landet."
       )
     }
+    nativeRuntimeLoaded = true
   }
 
   private fun ensureModelLibPresent(modelLib: String) {
@@ -205,7 +208,7 @@ class MlcEngine(private val context: Context) {
     val expected = File(nativeDir, "lib$modelLib.so")
     if (!expected.exists()) {
       val bundledRuntime = File(nativeDir, "libtvm4j_runtime_packed.so")
-      if (bundledRuntime.exists()) {
+      if (nativeRuntimeLoaded || bundledRuntime.exists()) {
         Log.w(
           tag,
           "Model lib ${expected.name} not found; assuming it is bundled into ${bundledRuntime.name}"

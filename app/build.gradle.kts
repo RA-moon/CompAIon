@@ -71,7 +71,7 @@ tasks.named("preBuild") {
   dependsOn(prepareWhisperModel)
 }
 
-val mlcModelId = "Qwen2.5-3B-Instruct-q4f16_1-MLC"
+val mlcModelId = "Qwen2.5-0.5B-Instruct-q4f16_1-MLC"
 val mlcModelLib = "qwen2_q4f16_1_baba969d0bfeac5381e90160d305dff2"
 val mlcModelCacheDir = File(
   System.getProperty("user.home"),

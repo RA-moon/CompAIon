@@ -12,6 +12,8 @@
         <item name="android:textColorPrimary">@color/ap_text_primary</item>
         <item name="android:textColorSecondary">@color/ap_text_secondary</item>
         <item name="android:textViewStyle">@style/Widget.CompAIon.TextView</item>
+        <item name="android:fontFamily">@font/special_elite</item>
+        <item name="fontFamily">@font/special_elite</item>
         <item name="materialButtonStyle">@style/Widget.CompAIon.PrimaryButton</item>
     </style>
 </resources>

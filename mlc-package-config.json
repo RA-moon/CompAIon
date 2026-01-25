@@ -2,9 +2,9 @@
   "device": "android",
   "model_list": [
     {
-      "model": "HF://mlc-ai/Qwen2.5-3B-Instruct-q4f16_1-MLC",
-      "model_id": "Qwen2.5-3B-Instruct-q4f16_1-MLC",
-      "estimated_vram_bytes": 3200000000,
+      "model": "HF://mlc-ai/Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+      "model_id": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+      "estimated_vram_bytes": 900000000,
       "overrides": {
         "opt": "O0",
         "prefill_chunk_size": 8,
