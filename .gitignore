@@ -1,6 +1,8 @@
 .DS_Store
 .idea/
 .vscode/
+.venv-mlc/
+.venv-mlc311/
 *.iml
 *.ipr
 *.iws

@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
   id("com.android.application")
   id("org.jetbrains.kotlin.android")
@@ -9,10 +11,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = "17"
     }
   defaultConfig {
     applicationId = "com.example.offlinevoice"
@@ -45,12 +43,21 @@ android {
 
   sourceSets["main"].assets.srcDirs(
     "src/main/assets",
-    layout.buildDirectory.dir("generated/assets/whisper")
+    layout.buildDirectory.dir("generated/assets/whisper"),
+    layout.buildDirectory.dir("generated/assets/mlc")
   )
+}
+
+kotlin {
+  jvmToolchain(21)
+  compilerOptions {
+    jvmTarget.set(JvmTarget.JVM_17)
+  }
 }
 
 val whisperModelSrc = file("src/main/cpp/whisper.cpp/models/ggml-base.bin")
 val generatedAssetsDir = layout.buildDirectory.dir("generated/assets/whisper")
+val generatedMlcAssetsDir = layout.buildDirectory.dir("generated/assets/mlc")
 
 val prepareWhisperModel by tasks.registering(Copy::class) {
   from(whisperModelSrc)
@@ -70,6 +77,7 @@ val mlcModelCacheDir = File(
 val mlcRepoDir = rootProject.projectDir.parentFile.resolve("mlc-llm")
 val mlcAppConfig = mlcRepoDir.resolve("dist/lib/mlc4j/src/main/assets/mlc-app-config.json")
 val mlcModelLibTxt = layout.buildDirectory.file("generated/mlc/model_lib.txt")
+val mlcGeneratedAppConfig = generatedMlcAssetsDir.map { it.file("mlc-app-config.json") }
 
 val prepareMlcModelLibTxt by tasks.registering {
   outputs.file(mlcModelLibTxt)
@@ -80,8 +88,34 @@ val prepareMlcModelLibTxt by tasks.registering {
   }
 }
 
+val prepareMlcAppConfig by tasks.registering {
+  outputs.file(mlcGeneratedAppConfig)
+  doLast {
+    val outFile = mlcGeneratedAppConfig.get().asFile
+    outFile.parentFile.mkdirs()
+    val modelUrl = "https://huggingface.co/mlc-ai/$mlcModelId"
+    outFile.writeText(
+      """
+      {
+        "model_list": [
+          {
+            "model_id": "$mlcModelId",
+            "model_lib": "$mlcModelLib",
+            "model_url": "$modelUrl"
+          }
+        ]
+      }
+      """.trimIndent()
+    )
+  }
+}
+
+tasks.named("preBuild") {
+  dependsOn(prepareMlcAppConfig)
+}
+
 val installMlcModel by tasks.registering {
-  dependsOn(prepareMlcModelLibTxt)
+  dependsOn(prepareMlcModelLibTxt, prepareMlcAppConfig)
   doLast {
     if (!mlcModelCacheDir.exists()) {
       throw GradleException(
@@ -100,8 +134,16 @@ val installMlcModel by tasks.registering {
         "$deviceRoot/$mlcModelId/model_lib.txt"
       )
     }
+    exec {
+      commandLine(
+        "adb",
+        "push",
+        mlcGeneratedAppConfig.get().asFile.absolutePath,
+        "$deviceRoot/mlc-app-config.json"
+      )
+    }
     if (mlcAppConfig.exists()) {
-      exec { commandLine("adb", "push", mlcAppConfig.absolutePath, "$deviceRoot/mlc-app-config.json") }
+      exec { commandLine("adb", "push", mlcAppConfig.absolutePath, "$deviceRoot/mlc-app-config.repo.json") }
     }
   }
 }

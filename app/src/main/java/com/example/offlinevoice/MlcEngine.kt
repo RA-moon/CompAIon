@@ -55,6 +55,7 @@ class MlcEngine(private val context: Context) {
     Log.i(tag, "loadModel modelDir=${modelPaths.modelDir.absolutePath} modelLib=${modelPaths.modelLib}")
     engine.unload()
     ensureNativeRuntimePresent()
+    ensureModelLibPresent(modelPaths.modelLib)
     engine.reload(modelPaths.modelDir.absolutePath, modelPaths.modelLib)
     loadedKey = key
   }
@@ -188,6 +189,25 @@ class MlcEngine(private val context: Context) {
         "MLC Runtime nicht gefunden.\n" +
           "Erwartet: ${runtime.absolutePath}\n" +
           "Baue mlc4j (aus mlc-llm) und stelle sicher, dass die Ausgabe in der App landet."
+      )
+    }
+  }
+
+  private fun ensureModelLibPresent(modelLib: String) {
+    try {
+      Log.d(tag, "System.loadLibrary($modelLib)")
+      System.loadLibrary(modelLib)
+      return
+    } catch (_: UnsatisfiedLinkError) {
+      Log.w(tag, "System.loadLibrary($modelLib) failed, checking nativeLibraryDir")
+    }
+    val nativeDir = File(context.applicationInfo.nativeLibraryDir)
+    val expected = File(nativeDir, "lib$modelLib.so")
+    if (!expected.exists()) {
+      Log.e(tag, "Missing model lib at ${expected.absolutePath}")
+      throw IllegalStateException(
+        "Kompilierte Model-Lib fehlt: ${expected.name}.\n" +
+          "Führe im mlc-llm Repo `mlc_llm package` für $modelLib aus und installiere dann erneut."
       )
     }
   }

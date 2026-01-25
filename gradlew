@@ -82,6 +82,18 @@ esac
 
 CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
 
+if [ -z "$JAVA_HOME" ] && [ "$darwin" = "true" ] ; then
+    for CANDIDATE in \
+        /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home \
+        /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
+    do
+        if [ -x "$CANDIDATE/bin/java" ] ; then
+            JAVA_HOME="$CANDIDATE"
+            break
+        fi
+    done
+fi
+
 
 # Determine the Java command to use to start the JVM.
 if [ -n "$JAVA_HOME" ] ; then
