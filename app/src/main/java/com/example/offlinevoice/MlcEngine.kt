@@ -204,6 +204,14 @@ class MlcEngine(private val context: Context) {
     val nativeDir = File(context.applicationInfo.nativeLibraryDir)
     val expected = File(nativeDir, "lib$modelLib.so")
     if (!expected.exists()) {
+      val bundledRuntime = File(nativeDir, "libtvm4j_runtime_packed.so")
+      if (bundledRuntime.exists()) {
+        Log.w(
+          tag,
+          "Model lib ${expected.name} not found; assuming it is bundled into ${bundledRuntime.name}"
+        )
+        return
+      }
       Log.e(tag, "Missing model lib at ${expected.absolutePath}")
       throw IllegalStateException(
         "Kompilierte Model-Lib fehlt: ${expected.name}.\n" +
