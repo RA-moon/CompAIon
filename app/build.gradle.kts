@@ -39,7 +39,10 @@ android {
     cmake { path = file("src/main/cpp/CMakeLists.txt") }
   }
 
-  buildFeatures { viewBinding = true }
+  buildFeatures {
+    viewBinding = true
+    buildConfig = true
+  }
 
   sourceSets["main"].assets.srcDirs(
     "src/main/assets",
@@ -69,13 +72,13 @@ tasks.named("preBuild") {
 }
 
 val mlcModelId = "Qwen2.5-3B-Instruct-q4f16_1-MLC"
-val mlcModelLib = "qwen2_q4f16_1_9906d323e62c717e61e080450377d2ec"
+val mlcModelLib = "qwen2_q4f16_1_baba969d0bfeac5381e90160d305dff2"
 val mlcModelCacheDir = File(
   System.getProperty("user.home"),
   ".cache/mlc_llm/model_weights/hf/mlc-ai/$mlcModelId"
 )
 val mlcRepoDir = rootProject.projectDir.parentFile.resolve("mlc-llm")
-val mlcAppConfig = mlcRepoDir.resolve("dist/lib/mlc4j/src/main/assets/mlc-app-config.json")
+val mlcAppConfig = rootProject.projectDir.resolve("dist/lib/mlc4j/src/main/assets/mlc-app-config.json")
 val mlcModelLibTxt = layout.buildDirectory.file("generated/mlc/model_lib.txt")
 val mlcGeneratedAppConfig = generatedMlcAssetsDir.map { it.file("mlc-app-config.json") }
 

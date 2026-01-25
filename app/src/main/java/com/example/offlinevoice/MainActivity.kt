@@ -1,13 +1,17 @@
 package com.example.offlinevoice
 
 import android.Manifest
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.PixelFormat
 import android.os.Bundle
 import android.view.MotionEvent
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import android.util.Log
 import com.google.android.filament.MaterialInstance
 import com.google.android.filament.Camera
@@ -22,6 +26,7 @@ import io.github.sceneview.math.Position
 import io.github.sceneview.math.Rotation
 import io.github.sceneview.math.Scale
 import io.github.sceneview.node.ModelNode
+import java.io.File
 import kotlin.math.max
 
 class MainActivity : AppCompatActivity() {
@@ -61,6 +66,10 @@ class MainActivity : AppCompatActivity() {
 
     ensureAudioPermission()
 
+    binding.legalTermsLinkText.setOnClickListener {
+      openLegalPdf()
+    }
+
     binding.pttButton.setOnTouchListener { _, event ->
       when (event.action) {
         MotionEvent.ACTION_DOWN -> controller.startPtt()
@@ -91,6 +100,38 @@ class MainActivity : AppCompatActivity() {
       PackageManager.PERMISSION_GRANTED
     if (!granted) {
       ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), 1001)
+    }
+  }
+
+  private fun openLegalPdf() {
+    val cachedFile = File(cacheDir, "astralpirates_terms_privacy.pdf")
+    if (!cachedFile.exists() || cachedFile.length() == 0L) {
+      copyLegalPdfToCache(cachedFile)
+    }
+
+    val uri = FileProvider.getUriForFile(
+      this,
+      "${BuildConfig.APPLICATION_ID}.fileprovider",
+      cachedFile
+    )
+    val viewIntent = Intent(Intent.ACTION_VIEW).apply {
+      setDataAndType(uri, "application/pdf")
+      addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+
+    try {
+      startActivity(Intent.createChooser(viewIntent, getString(R.string.legal_terms_link)))
+    } catch (e: ActivityNotFoundException) {
+      Toast.makeText(this, R.string.legal_terms_open_error, Toast.LENGTH_LONG).show()
+      Log.w("MainActivity", "No PDF viewer available", e)
+    }
+  }
+
+  private fun copyLegalPdfToCache(targetFile: File) {
+    resources.openRawResource(R.raw.astralpirates_terms_privacy).use { input ->
+      targetFile.outputStream().use { output ->
+        input.copyTo(output)
+      }
     }
   }
 

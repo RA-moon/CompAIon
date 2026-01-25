@@ -96,6 +96,18 @@
       android:textColor="@color/ap_text_secondary"
       android:textSize="12sp" />
 
+    <TextView
+      android:id="@+id/legalTermsLinkText"
+      style="@style/TextAppearance.CompAIon.Body"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="4dp"
+      android:clickable="true"
+      android:focusable="true"
+      android:text="@string/legal_terms_link"
+      android:textColor="@color/ap_accent_secondary"
+      android:textSize="12sp" />
+
   </LinearLayout>
 
 </FrameLayout>
