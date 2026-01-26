@@ -29,9 +29,9 @@ This checklist captures what’s needed to distribute CompAIon as a signed APK o
 - Privacy Policy + Data Safety form (even on-device apps must declare what they do).
 
 ### 3) Model distribution strategy (critical)
-You cannot ship large models directly in the APK.
-- **Preferred**: download models on first run (or via a setup screen).
-- Consider Play Asset Delivery (PAD) if assets are large but static.
+Current plan: **keep the model inside the APK**.
+- This is fine for sideloaded APKs, but Play Store size limits still apply.
+- If the APK/AAB is too large, switch to Play Asset Delivery (PAD).
 - Provide integrity checks and clear user messaging if model is missing.
 
 ### 4) Legal/licensing
@@ -56,7 +56,6 @@ You cannot ship large models directly in the APK.
 - Short description: `Offline AI assistant for Android: on-device Whisper STT + MLC LLM + Android TTS.`
 
 ### 8) Release‑build notes for this repo
-- `app/build.gradle.kts` currently has a `release` build type but no signing config.
-- `minifyEnabled` is currently `false` and should be enabled for Store releases.
-- Large models should be installed out-of-band (not inside the APK).
-
+- `app/build.gradle.kts` reads signing values from Gradle properties when provided.
+- `minifyEnabled` + `shrinkResources` are enabled for release.
+- JNI keep rules are in `app/proguard-rules.pro`.

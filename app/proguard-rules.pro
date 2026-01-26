@@ -1,1 +1,3 @@
-# no-op
+-keepclasseswithmembers class * {
+    native <methods>;
+}

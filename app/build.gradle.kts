@@ -27,10 +27,36 @@ android {
     }
   }
 
+  val storeFilePath = project.findProperty("COMPAION_STORE_FILE") as String?
+  val storePasswordValue = project.findProperty("COMPAION_STORE_PASSWORD") as String?
+  val keyAliasValue = project.findProperty("COMPAION_KEY_ALIAS") as String?
+  val keyPasswordValue = project.findProperty("COMPAION_KEY_PASSWORD") as String?
+  val hasSigningConfig = listOf(
+    storeFilePath,
+    storePasswordValue,
+    keyAliasValue,
+    keyPasswordValue
+  ).all { !it.isNullOrBlank() }
+
+  signingConfigs {
+    create("release") {
+      if (hasSigningConfig) {
+        storeFile = file(storeFilePath!!)
+        storePassword = storePasswordValue
+        keyAlias = keyAliasValue
+        keyPassword = keyPasswordValue
+      }
+    }
+  }
+
   buildTypes {
     release {
-      isMinifyEnabled = false
+      isMinifyEnabled = true
+      isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+      if (hasSigningConfig) {
+        signingConfig = signingConfigs.getByName("release")
+      }
     }
     debug { isJniDebuggable = true }
   }
