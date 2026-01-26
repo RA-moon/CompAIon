@@ -27,6 +27,7 @@ class MlcEngine(private val context: Context) {
   private var nativeRuntimeLoaded = false
   private val baseModelId = BuildConfig.MLC_BASE_MODEL_ID
   private val assetPackName = BuildConfig.MLC_ASSET_PACK
+  private val fallbackZipUrl = BuildConfig.MLC_FALLBACK_ZIP_URL
 
   private fun modelRoots(): List<File> {
     val roots = listOf(
@@ -96,6 +97,20 @@ class MlcEngine(private val context: Context) {
     ensureModelLibPresent(modelPaths.modelLib, modelPaths.modelDir)
     engine.reload(modelPaths.modelDir.absolutePath, modelPaths.modelLib)
     loadedKey = key
+  }
+
+  fun ensureBaseModelAvailable(onStatus: (String) -> Unit) {
+    val internalRoot = File(context.filesDir, "models/llm")
+    if (File(internalRoot, baseModelId).resolve("mlc-chat-config.json").exists()) return
+    ensureBundledModelsExtracted()
+    if (File(internalRoot, baseModelId).resolve("mlc-chat-config.json").exists()) return
+    if (fallbackZipUrl.isNotBlank()) {
+      downloadAndInstallModel(fallbackZipUrl, onStatus)
+    } else {
+      throw IllegalStateException(
+        "Basismodell fehlt. Kein Auto-Download konfiguriert (MLC_FALLBACK_ZIP_URL)."
+      )
+    }
   }
 
   fun generateDeShort(

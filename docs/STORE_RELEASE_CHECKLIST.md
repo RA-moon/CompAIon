@@ -35,6 +35,12 @@ Current plan: **Play Asset Delivery (install-time)** for the base model.
 - The app extracts the asset pack model into internal storage on first run.
 - UI download is available for additional models (HTTP).
 - When a new model is installed, older models are removed (base model is kept).
+- Optional auto-download if base model is missing:
+  - Set `MLC_FALLBACK_ZIP_URL` in `~/.gradle/gradle.properties`.
+
+### Build outputs
+- Store (AAB + asset pack): `./gradlew :app:bundleStoreRelease`
+- Sideload (APK + embedded model): `./gradlew :app:assembleSideloadRelease`
 
 ### 4) Legal/licensing
 - Verify licensing for:

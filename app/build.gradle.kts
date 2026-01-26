@@ -8,6 +8,12 @@ plugins {
 val mlcModelId = "Qwen2.5-0.5B-Instruct-q4f16_1-MLC"
 val mlcModelLib = "qwen2_q4f16_1_95967267c464e10967be161a66e856d4"
 val mlcAssetPackName = "mlcmodel"
+val mlcFallbackZipUrl = (project.findProperty("MLC_FALLBACK_ZIP_URL") as String?)
+  ?.trim()
+  .orEmpty()
+val mlcFallbackZipUrlEscaped = mlcFallbackZipUrl
+  .replace("\\", "\\\\")
+  .replace("\"", "\\\"")
 
 android {
   namespace = "com.example.offlinevoice"
@@ -24,6 +30,7 @@ android {
     versionName = "0.4"
     buildConfigField("String", "MLC_BASE_MODEL_ID", "\"$mlcModelId\"")
     buildConfigField("String", "MLC_ASSET_PACK", "\"$mlcAssetPackName\"")
+    buildConfigField("String", "MLC_FALLBACK_ZIP_URL", "\"$mlcFallbackZipUrlEscaped\"")
 
     // MLC + modern devices: start with arm64 only
     ndk { abiFilters += listOf("arm64-v8a") }
@@ -78,10 +85,23 @@ android {
 
   assetPacks += setOf(":mlcmodel")
 
+  flavorDimensions += "dist"
+  productFlavors {
+    create("store") {
+      dimension = "dist"
+    }
+    create("sideload") {
+      dimension = "dist"
+    }
+  }
+
   sourceSets["main"].assets.srcDirs(
     "src/main/assets",
     layout.buildDirectory.dir("generated/assets/whisper"),
     layout.buildDirectory.dir("generated/assets/mlc")
+  )
+  sourceSets["sideload"].assets.srcDirs(
+    layout.buildDirectory.dir("generated/assets/mlc_sideload")
   )
 }
 
@@ -114,6 +134,7 @@ val mlcAppConfig = rootProject.projectDir.resolve("dist/lib/mlc4j/src/main/asset
 val mlcModelLibTxt = layout.buildDirectory.file("generated/mlc/model_lib.txt")
 val mlcGeneratedAppConfig = generatedMlcAssetsDir.map { it.file("mlc-app-config.json") }
 val appId = android.defaultConfig.applicationId ?: "com.astralpirates.elsa"
+val bundledMlcSideloadDir = layout.buildDirectory.dir("generated/assets/mlc_sideload/mlc/models/$mlcModelId")
 
 val prepareMlcModelLibTxt by tasks.registering {
   outputs.file(mlcModelLibTxt)
@@ -147,8 +168,27 @@ val prepareMlcAppConfig by tasks.registering {
   }
 }
 
+val prepareBundledMlcModelSideload by tasks.registering(Copy::class) {
+  doFirst {
+    if (!mlcModelCacheDir.exists()) {
+      throw GradleException(
+        "MLC model cache not found at: ${mlcModelCacheDir.absolutePath}\n" +
+          "Run the mlc_llm package step first."
+      )
+    }
+  }
+  from(mlcModelCacheDir)
+  into(bundledMlcSideloadDir)
+}
+
 tasks.named("preBuild") {
   dependsOn(prepareMlcAppConfig)
+}
+
+tasks.configureEach {
+  if (name.startsWith("preSideload", ignoreCase = true)) {
+    dependsOn(prepareBundledMlcModelSideload)
+  }
 }
 
 val installMlcModel by tasks.registering {

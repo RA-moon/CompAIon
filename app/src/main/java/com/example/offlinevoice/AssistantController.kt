@@ -55,6 +55,9 @@ class AssistantController(
           "Ich habe nichts verstanden."
         } else {
           main.post { onAnswer("Denke nach…") }
+          mlc.ensureBaseModelAvailable { status ->
+            main.post { onState(status) }
+          }
           Log.d(tag, "mlc.generateDeShort()")
           mlc.generateDeShortStream(transcript, timeoutMs = 120_000) { partial ->
             main.post { onAnswer(partial) }
