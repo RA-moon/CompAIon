@@ -52,6 +52,13 @@
       android:layout_marginTop="20dp"
       android:text="Hold to Talk (PTT)" />
 
+    <Button
+      android:id="@+id/downloadModelButton"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="12dp"
+      android:text="Download Model" />
+
     <com.example.offlinevoice.ui.AnimatedGradientTextView
       android:id="@+id/transcriptLabel"
       style="@style/TextAppearance.CompAIon.Heading2"

@@ -5,6 +5,10 @@ plugins {
   id("org.jetbrains.kotlin.android")
 }
 
+val mlcModelId = "Qwen2.5-0.5B-Instruct-q4f16_1-MLC"
+val mlcModelLib = "qwen2_q4f16_1_95967267c464e10967be161a66e856d4"
+val mlcAssetPackName = "mlcmodel"
+
 android {
   namespace = "com.example.offlinevoice"
   compileSdk = 35
@@ -18,6 +22,8 @@ android {
     targetSdk = 34
     versionCode = 4
     versionName = "0.4"
+    buildConfigField("String", "MLC_BASE_MODEL_ID", "\"$mlcModelId\"")
+    buildConfigField("String", "MLC_ASSET_PACK", "\"$mlcAssetPackName\"")
 
     // MLC + modern devices: start with arm64 only
     ndk { abiFilters += listOf("arm64-v8a") }
@@ -70,6 +76,8 @@ android {
     buildConfig = true
   }
 
+  assetPacks += setOf(":mlcmodel")
+
   sourceSets["main"].assets.srcDirs(
     "src/main/assets",
     layout.buildDirectory.dir("generated/assets/whisper"),
@@ -97,8 +105,6 @@ tasks.named("preBuild") {
   dependsOn(prepareWhisperModel)
 }
 
-val mlcModelId = "Qwen2.5-0.5B-Instruct-q4f16_1-MLC"
-val mlcModelLib = "qwen2_q4f16_1_95967267c464e10967be161a66e856d4"
 val mlcModelCacheDir = File(
   System.getProperty("user.home"),
   ".cache/mlc_llm/model_weights/hf/mlc-ai/$mlcModelId"
@@ -107,7 +113,6 @@ val mlcRepoDir = rootProject.projectDir.parentFile.resolve("mlc-llm")
 val mlcAppConfig = rootProject.projectDir.resolve("dist/lib/mlc4j/src/main/assets/mlc-app-config.json")
 val mlcModelLibTxt = layout.buildDirectory.file("generated/mlc/model_lib.txt")
 val mlcGeneratedAppConfig = generatedMlcAssetsDir.map { it.file("mlc-app-config.json") }
-val bundledMlcModelDir = generatedMlcAssetsDir.map { it.dir("mlc/models/$mlcModelId") }
 val appId = android.defaultConfig.applicationId ?: "com.astralpirates.elsa"
 
 val prepareMlcModelLibTxt by tasks.registering {
@@ -123,6 +128,7 @@ val prepareMlcAppConfig by tasks.registering {
   outputs.file(mlcGeneratedAppConfig)
   doLast {
     val outFile = mlcGeneratedAppConfig.get().asFile
+    outFile.parentFile.deleteRecursively()
     outFile.parentFile.mkdirs()
     val modelUrl = "https://huggingface.co/mlc-ai/$mlcModelId"
     outFile.writeText(
@@ -141,21 +147,8 @@ val prepareMlcAppConfig by tasks.registering {
   }
 }
 
-val prepareBundledMlcModel by tasks.registering(Copy::class) {
-  doFirst {
-    if (!mlcModelCacheDir.exists()) {
-      throw GradleException(
-        "MLC model cache not found at: ${mlcModelCacheDir.absolutePath}\n" +
-          "Run the mlc_llm package step first."
-      )
-    }
-  }
-  from(mlcModelCacheDir)
-  into(bundledMlcModelDir)
-}
-
 tasks.named("preBuild") {
-  dependsOn(prepareMlcAppConfig, prepareBundledMlcModel)
+  dependsOn(prepareMlcAppConfig)
 }
 
 val installMlcModel by tasks.registering {
@@ -209,6 +202,7 @@ dependencies {
   implementation("androidx.core:core-ktx:1.13.1")
   implementation("androidx.appcompat:appcompat:1.7.0")
   implementation("com.google.android.material:material:1.12.0")
+  implementation("com.google.android.play:asset-delivery:2.2.2")
   implementation("io.github.sceneview:sceneview:2.3.3")
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
   implementation(project(":mlc4j"))

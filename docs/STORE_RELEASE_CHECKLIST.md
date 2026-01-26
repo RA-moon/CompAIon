@@ -30,11 +30,11 @@ This checklist captures what’s needed to distribute CompAIon as a signed APK o
 - If you changed the package name, create a **new app** in Play Console before upload.
 
 ### 3) Model distribution strategy (critical)
-Current plan: **keep the model inside the APK**.
-- This is fine for sideloaded APKs, but Play Store size limits still apply.
-- If the APK/AAB is too large, switch to Play Asset Delivery (PAD).
-- Provide integrity checks and clear user messaging if model is missing.
-- The app now extracts bundled assets from `assets/mlc/models` into internal storage on first run.
+Current plan: **Play Asset Delivery (install-time)** for the base model.
+- Base module stays under 200 MB compressed.
+- The app extracts the asset pack model into internal storage on first run.
+- UI download is available for additional models (HTTP).
+- When a new model is installed, older models are removed (base model is kept).
 
 ### 4) Legal/licensing
 - Verify licensing for:

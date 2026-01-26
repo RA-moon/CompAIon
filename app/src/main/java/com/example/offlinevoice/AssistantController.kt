@@ -80,6 +80,24 @@ class AssistantController(
     }
   }
 
+  fun downloadModel(url: String) {
+    io.execute {
+      try {
+        main.post { onState("DOWNLOADING MODEL") }
+        val modelId = mlc.downloadAndInstallModel(url) { status ->
+          main.post { onState(status) }
+        }
+        main.post { onAnswer("Model installed: $modelId") }
+        main.post { onState("IDLE") }
+      } catch (t: Throwable) {
+        Log.e(tag, "Model download failed", t)
+        val msg = "Download failed: ${t.message ?: t.javaClass.simpleName}"
+        main.post { onAnswer(msg) }
+        main.post { onState("IDLE") }
+      }
+    }
+  }
+
   private fun ensureModel(): File {
     if (modelFile.exists() && modelFile.length() > 1_000_000 && hasGgmlMagic(modelFile)) {
       return modelFile

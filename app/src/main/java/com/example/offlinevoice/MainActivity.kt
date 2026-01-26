@@ -17,6 +17,8 @@ import android.view.MotionEvent
 import android.view.ViewConfiguration
 import android.view.animation.DecelerateInterpolator
 import android.widget.Toast
+import android.widget.EditText
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -140,6 +142,10 @@ class MainActivity : AppCompatActivity() {
       true
     }
 
+    binding.downloadModelButton.setOnClickListener {
+      showModelDownloadDialog()
+    }
+
     // Drag response disabled for now; gyro input still works.
     binding.root.setOnTouchListener { _, _ -> false }
   }
@@ -201,6 +207,29 @@ class MainActivity : AppCompatActivity() {
         input.copyTo(output)
       }
     }
+  }
+
+  private fun showModelDownloadDialog() {
+    val input = EditText(this).apply {
+      hint = "https://.../model.zip"
+    }
+    AlertDialog.Builder(this)
+      .setTitle("Download Model")
+      .setMessage(
+        "Provide a URL to a .zip that contains mlc-chat-config.json, model_lib.txt, " +
+          "and lib<model_lib>.so."
+      )
+      .setView(input)
+      .setPositiveButton("Download") { _, _ ->
+        val url = input.text.toString().trim()
+        if (url.isBlank()) {
+          Toast.makeText(this, "Please enter a URL.", Toast.LENGTH_SHORT).show()
+        } else {
+          controller.downloadModel(url)
+        }
+      }
+      .setNegativeButton("Cancel", null)
+      .show()
   }
 
   private fun setupValuesScene() {

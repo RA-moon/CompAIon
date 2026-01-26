@@ -2,14 +2,19 @@ package com.example.offlinevoice
 
 import ai.mlc.mlcllm.MLCEngine
 import ai.mlc.mlcllm.OpenAIProtocol
+import android.content.Context
+import android.os.SystemClock
+import android.util.Log
+import com.google.android.play.core.assetpacks.AssetPackManagerFactory
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.json.JSONObject
-import android.content.Context
-import android.os.SystemClock
-import android.util.Log
+import java.io.BufferedInputStream
 import java.io.File
+import java.io.FileOutputStream
+import java.net.URL
+import java.util.zip.ZipInputStream
 
 class MlcEngine(private val context: Context) {
 
@@ -20,6 +25,8 @@ class MlcEngine(private val context: Context) {
   private val engine = MLCEngine()
   private var loadedKey: String? = null
   private var nativeRuntimeLoaded = false
+  private val baseModelId = BuildConfig.MLC_BASE_MODEL_ID
+  private val assetPackName = BuildConfig.MLC_ASSET_PACK
 
   private fun modelRoots(): List<File> {
     val roots = listOf(
@@ -62,24 +69,6 @@ class MlcEngine(private val context: Context) {
     return ModelPaths(root, modelDir, modelLib)
   }
 
-  private fun ensureBundledModelsExtracted() {
-    val internalRoot = File(context.filesDir, "models/llm")
-    val existing = internalRoot.listFiles()
-      ?.any { it.isDirectory && File(it, "mlc-chat-config.json").exists() }
-      ?: false
-    if (existing) return
-    val bundledModels = runCatching { context.assets.list("mlc/models") }.getOrNull()
-      ?.filter { it.isNotBlank() }
-      .orEmpty()
-    if (bundledModels.isEmpty()) return
-    for (modelId in bundledModels) {
-      val targetDir = File(internalRoot, modelId)
-      if (File(targetDir, "mlc-chat-config.json").exists()) continue
-      Log.i(tag, "Extracting bundled model $modelId to ${targetDir.absolutePath}")
-      copyAssetDir("mlc/models/$modelId", targetDir)
-    }
-  }
-
   private fun copyAssetDir(assetPath: String, destPath: File) {
     val assets = context.assets
     val children = assets.list(assetPath)
@@ -104,7 +93,7 @@ class MlcEngine(private val context: Context) {
     Log.i(tag, "loadModel modelDir=${modelPaths.modelDir.absolutePath} modelLib=${modelPaths.modelLib}")
     engine.unload()
     ensureNativeRuntimePresent()
-    ensureModelLibPresent(modelPaths.modelLib)
+    ensureModelLibPresent(modelPaths.modelLib, modelPaths.modelDir)
     engine.reload(modelPaths.modelDir.absolutePath, modelPaths.modelLib)
     loadedKey = key
   }
@@ -274,13 +263,19 @@ class MlcEngine(private val context: Context) {
     nativeRuntimeLoaded = true
   }
 
-  private fun ensureModelLibPresent(modelLib: String) {
+  private fun ensureModelLibPresent(modelLib: String, modelDir: File) {
     try {
       Log.d(tag, "System.loadLibrary($modelLib)")
       System.loadLibrary(modelLib)
       return
     } catch (_: UnsatisfiedLinkError) {
       Log.w(tag, "System.loadLibrary($modelLib) failed, checking nativeLibraryDir")
+    }
+    val localLib = File(modelDir, "lib$modelLib.so")
+    if (localLib.exists()) {
+      Log.d(tag, "System.load(${localLib.absolutePath})")
+      System.load(localLib.absolutePath)
+      return
     }
     val nativeDir = File(context.applicationInfo.nativeLibraryDir)
     val expected = File(nativeDir, "lib$modelLib.so")
@@ -298,6 +293,223 @@ class MlcEngine(private val context: Context) {
         "Kompilierte Model-Lib fehlt: ${expected.name}.\n" +
           "Führe im mlc-llm Repo `mlc_llm package` für $modelLib aus und installiere dann erneut."
       )
+    }
+  }
+
+  fun downloadAndInstallModel(
+    url: String,
+    onStatus: (String) -> Unit
+  ): String {
+    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+      throw IllegalArgumentException("Nur http/https URLs sind erlaubt.")
+    }
+    val target = File(context.cacheDir, "mlc-model-download.zip")
+    downloadFile(url, target, onStatus)
+    return installModelFromZip(target, onStatus)
+  }
+
+  private fun downloadFile(url: String, target: File, onStatus: (String) -> Unit) {
+    onStatus("DOWNLOADING MODEL")
+    val connection = URL(url).openConnection()
+    val total = connection.contentLengthLong
+    var downloaded = 0L
+    var lastUpdate = 0L
+    connection.getInputStream().use { input ->
+      FileOutputStream(target).use { output ->
+        val buffer = ByteArray(1024 * 1024)
+        while (true) {
+          val read = input.read(buffer)
+          if (read <= 0) break
+          output.write(buffer, 0, read)
+          downloaded += read
+          val now = SystemClock.elapsedRealtime()
+          if (now - lastUpdate > 500) {
+            lastUpdate = now
+            if (total > 0) {
+              val pct = (downloaded * 100 / total).toInt()
+              onStatus("DOWNLOADING MODEL ($pct%)")
+            } else {
+              onStatus("DOWNLOADING MODEL (${downloaded / (1024 * 1024)}MB)")
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private fun installModelFromZip(zipFile: File, onStatus: (String) -> Unit): String {
+    onStatus("INSTALLING MODEL")
+    val tempRoot = File(context.cacheDir, "mlc-model-${SystemClock.elapsedRealtime()}")
+    if (tempRoot.exists()) tempRoot.deleteRecursively()
+    tempRoot.mkdirs()
+    unzip(zipFile, tempRoot)
+    val modelDir = findModelDir(tempRoot)
+      ?: throw IllegalStateException("Kein mlc-chat-config.json im Download gefunden.")
+    val modelId = readModelId(modelDir) ?: modelDir.name
+    val targetDir = File(context.filesDir, "models/llm/$modelId")
+    if (targetDir.exists()) targetDir.deleteRecursively()
+    copyDir(modelDir, targetDir)
+    val modelLib = readModelLib(targetDir) ?: inferModelLibFromSo(targetDir)
+    if (modelLib != null) {
+      File(targetDir, "model_lib.txt").writeText(modelLib)
+    }
+    maybePromoteModelLib(targetDir, modelLib)
+    writePreferredAppConfig(modelId, modelLib)
+    pruneModels(setOf(baseModelId, modelId))
+    loadedKey = null
+    onStatus("MODEL READY")
+    return modelId
+  }
+
+  private fun unzip(zipFile: File, dest: File) {
+    ZipInputStream(BufferedInputStream(zipFile.inputStream())).use { zis ->
+      var entry = zis.nextEntry
+      while (entry != null) {
+        val outFile = File(dest, entry.name)
+        val canonical = outFile.canonicalPath
+        if (!canonical.startsWith(dest.canonicalPath)) {
+          throw IllegalStateException("Unsafe zip entry: ${entry.name}")
+        }
+        if (entry.isDirectory) {
+          outFile.mkdirs()
+        } else {
+          outFile.parentFile?.mkdirs()
+          FileOutputStream(outFile).use { output ->
+            zis.copyTo(output)
+          }
+        }
+        zis.closeEntry()
+        entry = zis.nextEntry
+      }
+    }
+  }
+
+  private fun findModelDir(root: File): File? {
+    if (File(root, "mlc-chat-config.json").exists()) return root
+    root.walkTopDown().forEach { file ->
+      if (file.name == "mlc-chat-config.json") {
+        return file.parentFile
+      }
+    }
+    return null
+  }
+
+  private fun readModelId(modelDir: File): String? {
+    val cfg = File(modelDir, "mlc-chat-config.json")
+    if (!cfg.exists()) return null
+    val json = JSONObject(cfg.readText())
+    return json.optString("model_id").takeIf { it.isNotBlank() }
+  }
+
+  private fun readModelLib(modelDir: File): String? {
+    val txt = File(modelDir, "model_lib.txt")
+    if (txt.exists()) return txt.readText().trim().takeIf { it.isNotBlank() }
+    val cfg = File(modelDir, "mlc-chat-config.json")
+    if (!cfg.exists()) return null
+    val json = JSONObject(cfg.readText())
+    return json.optString("model_lib").takeIf { it.isNotBlank() }
+  }
+
+  private fun inferModelLibFromSo(modelDir: File): String? {
+    val so = modelDir.walkTopDown().firstOrNull { it.isFile && it.name.endsWith(".so") }
+    return so?.name?.removePrefix("lib")?.removeSuffix(".so")
+  }
+
+  private fun maybePromoteModelLib(modelDir: File, modelLib: String?) {
+    if (modelLib.isNullOrBlank()) return
+    val expected = File(modelDir, "lib$modelLib.so")
+    if (expected.exists()) return
+    val found = modelDir.walkTopDown().firstOrNull { it.isFile && it.name == "lib$modelLib.so" }
+      ?: modelDir.walkTopDown().firstOrNull { it.isFile && it.name.endsWith(".so") }
+      ?: return
+    found.copyTo(expected, overwrite = true)
+  }
+
+  private fun writePreferredAppConfig(modelId: String, modelLib: String?) {
+    val root = File(context.filesDir, "models/llm")
+    root.mkdirs()
+    val config = File(root, "mlc-app-config.json")
+    val entry = JSONObject().apply {
+      put("model_id", modelId)
+      if (!modelLib.isNullOrBlank()) {
+        put("model_lib", modelLib)
+      }
+    }
+    val list = JSONObject().apply {
+      put("model_list", org.json.JSONArray().put(entry))
+    }
+    config.writeText(list.toString(2))
+  }
+
+  private fun pruneModels(keepIds: Set<String>) {
+    val roots = modelRoots()
+    roots.forEach { root ->
+      root.listFiles()
+        ?.filter { it.isDirectory }
+        ?.forEach { dir ->
+          if (!keepIds.contains(dir.name)) {
+            dir.deleteRecursively()
+          }
+        }
+    }
+  }
+
+  private fun ensureBundledModelsExtracted() {
+    val internalRoot = File(context.filesDir, "models/llm")
+    val basePresent = File(internalRoot, baseModelId)
+      .resolve("mlc-chat-config.json")
+      .exists()
+    if (basePresent) return
+    val packModels = listAssetPackModels()
+    if (packModels.isNotEmpty()) {
+      for (model in packModels) {
+        val targetDir = File(internalRoot, model.name)
+        if (File(targetDir, "mlc-chat-config.json").exists()) continue
+        Log.i(tag, "Extracting asset pack model ${model.name} to ${targetDir.absolutePath}")
+        copyDir(model, targetDir)
+      }
+      return
+    }
+    val bundledModels = runCatching { context.assets.list("mlc/models") }.getOrNull()
+      ?.filter { it.isNotBlank() }
+      .orEmpty()
+    if (bundledModels.isEmpty()) return
+    for (modelId in bundledModels) {
+      val targetDir = File(internalRoot, modelId)
+      if (File(targetDir, "mlc-chat-config.json").exists()) continue
+      Log.i(tag, "Extracting bundled model $modelId to ${targetDir.absolutePath}")
+      copyAssetDir("mlc/models/$modelId", targetDir)
+    }
+  }
+
+  private fun listAssetPackModels(): List<File> {
+    return try {
+      val manager = AssetPackManagerFactory.getInstance(context)
+      val location = manager.getPackLocation(assetPackName) ?: return emptyList()
+      val assetsPath = location.assetsPath() ?: return emptyList()
+      val root = File(assetsPath, "mlc/models")
+      root.listFiles()
+        ?.filter { it.isDirectory && File(it, "mlc-chat-config.json").exists() }
+        .orEmpty()
+    } catch (t: Throwable) {
+      Log.w(tag, "Asset pack lookup failed", t)
+      emptyList()
+    }
+  }
+
+  private fun copyDir(source: File, target: File) {
+    if (source.isDirectory) {
+      target.mkdirs()
+      source.listFiles()?.forEach { child ->
+        copyDir(child, File(target, child.name))
+      }
+      return
+    }
+    target.parentFile?.mkdirs()
+    source.inputStream().use { input ->
+      target.outputStream().use { output ->
+        input.copyTo(output)
+      }
     }
   }
 }

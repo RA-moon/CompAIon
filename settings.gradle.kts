@@ -12,3 +12,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "CompAIon"
 include(":app")
+include(":mlcmodel")
