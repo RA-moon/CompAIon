@@ -52,8 +52,9 @@ Current plan: **keep the model inside the APK**.
 - Validate model install path on Android 11+ (scoped storage).
 
 ### 7) Store listing copy (starter)
-- Title: `CompAIon — Offline AI for Android`
-- Short description: `Offline AI assistant for Android: on-device Whisper STT + MLC LLM + Android TTS.`
+- Title: `E.L.S.A.`
+- Short description (user-provided): `Ahoi!! Local AI runing offline on android - Is she fast? No! - Is it usefull? You tell me! -Do I have fun? Absolutly!`
+- Note: Play Store short description is limited (80 chars); trim if needed.
 
 ### 8) Release‑build notes for this repo
 - `app/build.gradle.kts` reads signing values from Gradle properties when provided.
