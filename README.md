@@ -2,6 +2,8 @@
 
 CompAIon is an offline-first Android assistant that runs speech-to-text, LLM inference, and text-to-speech fully on-device. It is wired for the Astral Pirates control stack and mirrors the visual language used in the Control deck (`https://astralpirates.com/gangway/engineering/control`).
 
+**Download E.L.S.A. for Android:** [E.L.S.A.](https://github.com/RA-moon/CompAIon/releases/latest)
+
 ## GitHub Project Description (Copy/Paste)
 - Short description: `Offline AI assistant for Android: on-device Whisper STT + MLC LLM + Android TTS, with a stylized control-deck UI.`
 - Topics: `android`, `offline-ai`, `on-device-ml`, `whisper`, `mlc-llm`, `tts`, `kotlin`, `jni`, `filament`
