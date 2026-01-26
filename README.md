@@ -106,6 +106,9 @@ If you just want the APK:
 ./gradlew :app:assembleDebug
 ```
 
+## Distribution (APK + Store)
+- Release checklist: `docs/STORE_RELEASE_CHECKLIST.md`
+
 ## How The Voice Pipeline Is Wired
 
 ### Audio capture

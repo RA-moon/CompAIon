@@ -1,0 +1,62 @@
+## CompAIon — Distribution Checklist (APK + Play Store)
+
+This checklist captures what’s needed to distribute CompAIon as a signed APK or on the Play Store.
+
+### 1) Signed APK (sideload)
+- Create a release keystore (do **not** commit it).
+- Add signing config via `gradle.properties` (local only) or CI secrets.
+- Build a signed release APK or AAB.
+
+**Example local signing (do not commit secrets):**
+- `~/.gradle/gradle.properties`:
+  - `COMPAION_STORE_FILE=/path/to/keystore.jks`
+  - `COMPAION_STORE_PASSWORD=...`
+  - `COMPAION_KEY_ALIAS=...`
+  - `COMPAION_KEY_PASSWORD=...`
+
+**Build commands:**
+- `./gradlew :app:assembleRelease`
+- `./gradlew :app:bundleRelease` (preferred for Store)
+
+### 2) Play Store prerequisites
+- Package ID must be final (changing it later breaks updates).
+- Versioning: increment `versionCode` and `versionName`.
+- Release build should have:
+  - `minifyEnabled true`
+  - `shrinkResources true`
+  - Proguard/R8 rules updated for JNI + MLC runtime.
+- App icon, screenshots, feature graphic, and a short demo.
+- Privacy Policy + Data Safety form (even on-device apps must declare what they do).
+
+### 3) Model distribution strategy (critical)
+You cannot ship large models directly in the APK.
+- **Preferred**: download models on first run (or via a setup screen).
+- Consider Play Asset Delivery (PAD) if assets are large but static.
+- Provide integrity checks and clear user messaging if model is missing.
+
+### 4) Legal/licensing
+- Verify licensing for:
+  - Whisper model and weights
+  - MLC model and weights
+  - Any bundled assets
+- Add license attribution or links in the app and repo.
+
+### 5) Stability & UX
+- Model-not-found should show a clean setup screen (not just a log error).
+- Handle slow CPU inference gracefully (progress states, cancel).
+- Add a clear offline‑first statement in the UI or onboarding.
+
+### 6) Recommended QA
+- Test on low‑RAM devices.
+- Test airplane mode start‑to‑finish.
+- Validate model install path on Android 11+ (scoped storage).
+
+### 7) Store listing copy (starter)
+- Title: `CompAIon — Offline AI for Android`
+- Short description: `Offline AI assistant for Android: on-device Whisper STT + MLC LLM + Android TTS.`
+
+### 8) Release‑build notes for this repo
+- `app/build.gradle.kts` currently has a `release` build type but no signing config.
+- `minifyEnabled` is currently `false` and should be enabled for Store releases.
+- Large models should be installed out-of-band (not inside the APK).
+
