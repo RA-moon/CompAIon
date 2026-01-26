@@ -32,6 +32,7 @@ class MlcEngine(private val context: Context) {
 
   fun resolveModel(): ModelPaths {
     val roots = modelRoots()
+    ensureBundledModelsExtracted()
     roots.forEach { Log.d(tag, "resolveModel root=${it.absolutePath}") }
     val candidates = roots.flatMap { root ->
       root.listFiles()
@@ -59,6 +60,42 @@ class MlcEngine(private val context: Context) {
     val modelLib = resolveModelLib(root, modelDir)
     Log.d(tag, "resolveModel modelLib=$modelLib")
     return ModelPaths(root, modelDir, modelLib)
+  }
+
+  private fun ensureBundledModelsExtracted() {
+    val internalRoot = File(context.filesDir, "models/llm")
+    val existing = internalRoot.listFiles()
+      ?.any { it.isDirectory && File(it, "mlc-chat-config.json").exists() }
+      ?: false
+    if (existing) return
+    val bundledModels = runCatching { context.assets.list("mlc/models") }.getOrNull()
+      ?.filter { it.isNotBlank() }
+      .orEmpty()
+    if (bundledModels.isEmpty()) return
+    for (modelId in bundledModels) {
+      val targetDir = File(internalRoot, modelId)
+      if (File(targetDir, "mlc-chat-config.json").exists()) continue
+      Log.i(tag, "Extracting bundled model $modelId to ${targetDir.absolutePath}")
+      copyAssetDir("mlc/models/$modelId", targetDir)
+    }
+  }
+
+  private fun copyAssetDir(assetPath: String, destPath: File) {
+    val assets = context.assets
+    val children = assets.list(assetPath)
+    if (children == null || children.isEmpty()) {
+      destPath.parentFile?.mkdirs()
+      assets.open(assetPath).use { input ->
+        destPath.outputStream().use { output ->
+          input.copyTo(output)
+        }
+      }
+      return
+    }
+    destPath.mkdirs()
+    for (child in children) {
+      copyAssetDir("$assetPath/$child", File(destPath, child))
+    }
   }
 
   fun loadModel(modelPaths: ModelPaths = resolveModel()) {

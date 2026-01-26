@@ -13,7 +13,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
   defaultConfig {
-    applicationId = "com.example.offlinevoice"
+    applicationId = "com.astralpirates.elsa"
     minSdk = 26
     targetSdk = 34
     versionCode = 4
@@ -107,6 +107,8 @@ val mlcRepoDir = rootProject.projectDir.parentFile.resolve("mlc-llm")
 val mlcAppConfig = rootProject.projectDir.resolve("dist/lib/mlc4j/src/main/assets/mlc-app-config.json")
 val mlcModelLibTxt = layout.buildDirectory.file("generated/mlc/model_lib.txt")
 val mlcGeneratedAppConfig = generatedMlcAssetsDir.map { it.file("mlc-app-config.json") }
+val bundledMlcModelDir = generatedMlcAssetsDir.map { it.dir("mlc/models/$mlcModelId") }
+val appId = android.defaultConfig.applicationId ?: "com.astralpirates.elsa"
 
 val prepareMlcModelLibTxt by tasks.registering {
   outputs.file(mlcModelLibTxt)
@@ -139,8 +141,21 @@ val prepareMlcAppConfig by tasks.registering {
   }
 }
 
+val prepareBundledMlcModel by tasks.registering(Copy::class) {
+  doFirst {
+    if (!mlcModelCacheDir.exists()) {
+      throw GradleException(
+        "MLC model cache not found at: ${mlcModelCacheDir.absolutePath}\n" +
+          "Run the mlc_llm package step first."
+      )
+    }
+  }
+  from(mlcModelCacheDir)
+  into(bundledMlcModelDir)
+}
+
 tasks.named("preBuild") {
-  dependsOn(prepareMlcAppConfig)
+  dependsOn(prepareMlcAppConfig, prepareBundledMlcModel)
 }
 
 val installMlcModel by tasks.registering {
@@ -152,7 +167,7 @@ val installMlcModel by tasks.registering {
           "Run the mlc_llm package step first."
       )
     }
-    val deviceRoot = "/sdcard/Android/data/com.example.offlinevoice/files/models/llm"
+    val deviceRoot = "/sdcard/Android/data/$appId/files/models/llm"
     exec { commandLine("adb", "shell", "mkdir", "-p", "$deviceRoot/$mlcModelId") }
     exec { commandLine("adb", "push", mlcModelCacheDir.absolutePath, deviceRoot) }
     exec {

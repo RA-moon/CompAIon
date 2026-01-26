@@ -27,12 +27,14 @@ This checklist captures what’s needed to distribute CompAIon as a signed APK o
   - Proguard/R8 rules updated for JNI + MLC runtime.
 - App icon, screenshots, feature graphic, and a short demo.
 - Privacy Policy + Data Safety form (even on-device apps must declare what they do).
+- If you changed the package name, create a **new app** in Play Console before upload.
 
 ### 3) Model distribution strategy (critical)
 Current plan: **keep the model inside the APK**.
 - This is fine for sideloaded APKs, but Play Store size limits still apply.
 - If the APK/AAB is too large, switch to Play Asset Delivery (PAD).
 - Provide integrity checks and clear user messaging if model is missing.
+- The app now extracts bundled assets from `assets/mlc/models` into internal storage on first run.
 
 ### 4) Legal/licensing
 - Verify licensing for:
