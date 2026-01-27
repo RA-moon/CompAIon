@@ -5,6 +5,13 @@ plugins {
   id("org.jetbrains.kotlin.android")
 }
 
+val coreKtxVersion: String by project
+val appcompatVersion: String by project
+val materialVersion: String by project
+val assetDeliveryVersion: String by project
+val sceneviewVersion: String by project
+val coroutinesAndroidVersion: String by project
+
 val mlcModelId = "Qwen2.5-0.5B-Instruct-q4f16_1-MLC"
 val mlcModelLib = "qwen2_q4f16_1_95967267c464e10967be161a66e856d4"
 val mlcAssetPackName = "mlcmodel"
@@ -14,6 +21,9 @@ val mlcFallbackZipUrl = (project.findProperty("MLC_FALLBACK_ZIP_URL") as String?
 val mlcFallbackZipUrlEscaped = mlcFallbackZipUrl
   .replace("\\", "\\\\")
   .replace("\"", "\\\"")
+val modelsDir = "models/llm"
+val modelLibFileName = "model_lib.txt"
+val appConfigFileName = "mlc-app-config.json"
 
 android {
   namespace = "com.example.offlinevoice"
@@ -117,6 +127,8 @@ val generatedAssetsDir = layout.buildDirectory.dir("generated/assets/whisper")
 val generatedMlcAssetsDir = layout.buildDirectory.dir("generated/assets/mlc")
 
 val prepareWhisperModel by tasks.registering(Copy::class) {
+  group = "assets"
+  description = "Copy the bundled Whisper model into generated assets."
   from(whisperModelSrc)
   into(generatedAssetsDir.map { it.dir("models") })
 }
@@ -130,13 +142,15 @@ val mlcModelCacheDir = File(
   ".cache/mlc_llm/model_weights/hf/mlc-ai/$mlcModelId"
 )
 val mlcRepoDir = rootProject.projectDir.parentFile.resolve("mlc-llm")
-val mlcAppConfig = rootProject.projectDir.resolve("dist/lib/mlc4j/src/main/assets/mlc-app-config.json")
-val mlcModelLibTxt = layout.buildDirectory.file("generated/mlc/model_lib.txt")
-val mlcGeneratedAppConfig = generatedMlcAssetsDir.map { it.file("mlc-app-config.json") }
+val mlcAppConfig = rootProject.projectDir.resolve("dist/lib/mlc4j/src/main/assets/$appConfigFileName")
+val mlcModelLibTxt = layout.buildDirectory.file("generated/mlc/$modelLibFileName")
+val mlcGeneratedAppConfig = generatedMlcAssetsDir.map { it.file(appConfigFileName) }
 val appId = android.defaultConfig.applicationId ?: "com.astralpirates.elsa"
 val bundledMlcSideloadDir = layout.buildDirectory.dir("generated/assets/mlc_sideload/mlc/models/$mlcModelId")
 
 val prepareMlcModelLibTxt by tasks.registering {
+  group = "mlc"
+  description = "Generate the MLC model_lib marker file."
   outputs.file(mlcModelLibTxt)
   doLast {
     val outFile = mlcModelLibTxt.get().asFile
@@ -146,6 +160,8 @@ val prepareMlcModelLibTxt by tasks.registering {
 }
 
 val prepareMlcAppConfig by tasks.registering {
+  group = "mlc"
+  description = "Generate the app-level MLC config JSON."
   outputs.file(mlcGeneratedAppConfig)
   doLast {
     val outFile = mlcGeneratedAppConfig.get().asFile
@@ -169,6 +185,8 @@ val prepareMlcAppConfig by tasks.registering {
 }
 
 val prepareBundledMlcModelSideload by tasks.registering(Copy::class) {
+  group = "mlc"
+  description = "Bundle the cached MLC model into sideload assets."
   doFirst {
     if (!mlcModelCacheDir.exists()) {
       throw GradleException(
@@ -192,6 +210,8 @@ tasks.configureEach {
 }
 
 val installMlcModel by tasks.registering {
+  group = "mlc"
+  description = "Push the configured MLC model and config to a connected device."
   dependsOn(prepareMlcModelLibTxt, prepareMlcAppConfig)
   doLast {
     if (!mlcModelCacheDir.exists()) {
@@ -200,7 +220,7 @@ val installMlcModel by tasks.registering {
           "Run the mlc_llm package step first."
       )
     }
-    val deviceRoot = "/sdcard/Android/data/$appId/files/models/llm"
+    val deviceRoot = "/sdcard/Android/data/$appId/files/$modelsDir"
     exec { commandLine("adb", "shell", "mkdir", "-p", "$deviceRoot/$mlcModelId") }
     exec { commandLine("adb", "push", mlcModelCacheDir.absolutePath, deviceRoot) }
     exec {
@@ -208,7 +228,7 @@ val installMlcModel by tasks.registering {
         "adb",
         "push",
         mlcModelLibTxt.get().asFile.absolutePath,
-        "$deviceRoot/$mlcModelId/model_lib.txt"
+        "$deviceRoot/$mlcModelId/$modelLibFileName"
       )
     }
     exec {
@@ -216,7 +236,7 @@ val installMlcModel by tasks.registering {
         "adb",
         "push",
         mlcGeneratedAppConfig.get().asFile.absolutePath,
-        "$deviceRoot/mlc-app-config.json"
+        "$deviceRoot/$appConfigFileName"
       )
     }
     if (mlcAppConfig.exists()) {
@@ -235,15 +255,17 @@ val installMlcModel by tasks.registering {
 }
 
 tasks.register("installDebugWithModel") {
+  group = "mlc"
+  description = "Install the debug build and push the configured MLC model."
   dependsOn("installDebug", installMlcModel)
 }
 
 dependencies {
-  implementation("androidx.core:core-ktx:1.13.1")
-  implementation("androidx.appcompat:appcompat:1.7.0")
-  implementation("com.google.android.material:material:1.12.0")
-  implementation("com.google.android.play:asset-delivery:2.2.2")
-  implementation("io.github.sceneview:sceneview:2.3.3")
-  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+  implementation("androidx.core:core-ktx:$coreKtxVersion")
+  implementation("androidx.appcompat:appcompat:$appcompatVersion")
+  implementation("com.google.android.material:material:$materialVersion")
+  implementation("com.google.android.play:asset-delivery:$assetDeliveryVersion")
+  implementation("io.github.sceneview:sceneview:$sceneviewVersion")
+  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:$coroutinesAndroidVersion")
   implementation(project(":mlc4j"))
 }

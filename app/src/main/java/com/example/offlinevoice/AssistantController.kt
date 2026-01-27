@@ -110,7 +110,7 @@ class AssistantController(
       modelFile.parentFile?.mkdirs()
       if (modelFile.exists() && !modelFile.delete()) {
         Log.w(tag, "Failed to delete stale model at ${modelFile.absolutePath}")
-        throw IllegalStateException("Unable to delete stale model file")
+        error("Unable to delete stale model file")
       }
       val assetPath = "models/ggml-base.bin"
       try {
@@ -136,12 +136,10 @@ class AssistantController(
       throw IllegalStateException("Model copy failed: ${t.message}", t)
     }
     main.post { onState("THINKING") }
-    if (!modelFile.exists() || modelFile.length() <= 1_000_000) {
-      throw IllegalStateException("Model copy failed: file missing or too small")
+    check(modelFile.exists() && modelFile.length() > 1_000_000) {
+      "Model copy failed: file missing or too small"
     }
-    if (!hasGgmlMagic(modelFile)) {
-      throw IllegalStateException("Model invalid after copy (missing ggml header)")
-    }
+    check(hasGgmlMagic(modelFile)) { "Model invalid after copy (missing ggml header)" }
     return modelFile
   }
 

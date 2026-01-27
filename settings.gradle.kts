@@ -4,6 +4,14 @@ project(":mlc4j").projectDir =
 
 
 pluginManagement {
+  val agpVersion = providers.gradleProperty("agpVersion").get()
+  val kotlinVersion = providers.gradleProperty("kotlinVersion").get()
+  plugins {
+    id("com.android.application") version agpVersion
+    id("com.android.library") version agpVersion
+    id("org.jetbrains.kotlin.android") version kotlinVersion
+    id("org.jetbrains.kotlin.plugin.serialization") version kotlinVersion
+  }
   repositories { google(); mavenCentral(); gradlePluginPortal() }
 }
 dependencyResolutionManagement {

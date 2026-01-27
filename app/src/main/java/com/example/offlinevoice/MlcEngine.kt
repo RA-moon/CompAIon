@@ -22,6 +22,13 @@ class MlcEngine(private val context: Context) {
 
   data class ModelPaths(val root: File, val modelDir: File, val modelLib: String)
 
+  private companion object {
+    private const val MODELS_DIR = "models/llm"
+    private const val CHAT_CONFIG = "mlc-chat-config.json"
+    private const val APP_CONFIG = "mlc-app-config.json"
+    private const val MODEL_LIB_TXT = "model_lib.txt"
+  }
+
   private val engine = MLCEngine()
   private var loadedKey: String? = null
   private var nativeRuntimeLoaded = false
@@ -31,36 +38,46 @@ class MlcEngine(private val context: Context) {
 
   private fun modelRoots(): List<File> {
     val roots = listOf(
-      File(context.getExternalFilesDir(null), "models/llm"),
-      File(context.filesDir, "models/llm")
+      File(context.getExternalFilesDir(null), MODELS_DIR),
+      File(context.filesDir, MODELS_DIR)
     )
     roots.forEach { it.mkdirs() }
     return roots
+  }
+
+  private fun discoverModelCandidates(roots: List<File>): List<Pair<File, File>> {
+    return roots.flatMap { root ->
+      root.listFiles()
+        ?.filter { it.isDirectory && File(it, CHAT_CONFIG).exists() }
+        ?.map { modelDir -> root to modelDir }
+        .orEmpty()
+    }
+  }
+
+  private fun selectModelCandidate(
+    candidates: List<Pair<File, File>>,
+    preferredIds: List<String>
+  ): Pair<File, File> {
+    return preferredIds.firstNotNullOfOrNull { preferredId ->
+      candidates.firstOrNull { (_, dir) -> dir.name == preferredId }
+    } ?: candidates.first()
   }
 
   fun resolveModel(): ModelPaths {
     val roots = modelRoots()
     ensureBundledModelsExtracted()
     roots.forEach { Log.d(tag, "resolveModel root=${it.absolutePath}") }
-    val candidates = roots.flatMap { root ->
-      root.listFiles()
-        ?.filter { it.isDirectory && File(it, "mlc-chat-config.json").exists() }
-        ?.map { modelDir -> root to modelDir }
-        .orEmpty()
-    }
+    val candidates = discoverModelCandidates(roots)
     if (candidates.isEmpty()) {
       throw IllegalStateException(
-      "Kein MLC-Modell gefunden.\n" +
-        "Erwartet:\n" +
-        "1) /Android/data/${context.packageName}/files/models/llm/<model>/mlc-chat-config.json\n" +
-        "2) ${context.filesDir}/models/llm/<model>/mlc-chat-config.json"
-    )
+        "Kein MLC-Modell gefunden.\n" +
+          "Erwartet:\n" +
+          "1) /Android/data/${context.packageName}/files/$MODELS_DIR/<model>/$CHAT_CONFIG\n" +
+          "2) ${context.filesDir}/$MODELS_DIR/<model>/$CHAT_CONFIG"
+      )
     }
     val preferredIds = roots.flatMap { preferredModelIds(it) }.distinct()
-    val match = preferredIds.firstNotNullOfOrNull { preferredId ->
-      candidates.firstOrNull { (_, dir) -> dir.name == preferredId }
-    } ?: candidates.first()
-    val (root, modelDir) = match
+    val (root, modelDir) = selectModelCandidate(candidates, preferredIds)
     if (preferredIds.isNotEmpty()) {
       Log.d(tag, "resolveModel preferredIds=${preferredIds.joinToString()}")
     }
@@ -100,14 +117,14 @@ class MlcEngine(private val context: Context) {
   }
 
   fun ensureBaseModelAvailable(onStatus: (String) -> Unit) {
-    val internalRoot = File(context.filesDir, "models/llm")
-    if (File(internalRoot, baseModelId).resolve("mlc-chat-config.json").exists()) return
+    val internalRoot = File(context.filesDir, MODELS_DIR)
+    if (File(internalRoot, baseModelId).resolve(CHAT_CONFIG).exists()) return
     ensureBundledModelsExtracted()
-    if (File(internalRoot, baseModelId).resolve("mlc-chat-config.json").exists()) return
+    if (File(internalRoot, baseModelId).resolve(CHAT_CONFIG).exists()) return
     if (fallbackZipUrl.isNotBlank()) {
       downloadAndInstallModel(fallbackZipUrl, onStatus)
     } else {
-      throw IllegalStateException(
+      error(
         "Basismodell fehlt. Kein Auto-Download konfiguriert (MLC_FALLBACK_ZIP_URL)."
       )
     }
@@ -191,19 +208,19 @@ class MlcEngine(private val context: Context) {
       resolveModelLibFromJson(cfg.readText(), modelId)?.let { return it }
     }
     runCatching {
-      context.assets.open("mlc-app-config.json").bufferedReader().use { it.readText() }
+      context.assets.open(APP_CONFIG).bufferedReader().use { it.readText() }
     }.getOrNull()?.let { jsonText ->
-      Log.d(tag, "resolveModelLib reading assets/mlc-app-config.json")
+      Log.d(tag, "resolveModelLib reading assets/$APP_CONFIG")
       resolveModelLibFromJson(jsonText, modelId)?.let { return it }
     }
-    val fallback = File(modelDir, "model_lib.txt")
+    val fallback = File(modelDir, MODEL_LIB_TXT)
     if (fallback.exists()) {
       Log.d(tag, "resolveModelLib using ${fallback.absolutePath}")
       return fallback.readText().trim()
     }
     throw IllegalStateException(
       "Model lib nicht gefunden.\n" +
-        "Lege eine mlc-app-config.json mit model_lib an oder ${modelDir.name}/model_lib.txt."
+        "Lege eine $APP_CONFIG mit model_lib an oder ${modelDir.name}/$MODEL_LIB_TXT."
     )
   }
 
@@ -222,9 +239,9 @@ class MlcEngine(private val context: Context) {
 
   private fun appConfigCandidates(root: File? = null): List<File> {
     val candidates = mutableListOf<File>()
-    if (root != null) candidates += File(root, "mlc-app-config.json")
-    candidates += File(context.getExternalFilesDir(null), "mlc-app-config.json")
-    candidates += File(context.filesDir, "mlc-app-config.json")
+    if (root != null) candidates += File(root, APP_CONFIG)
+    candidates += File(context.getExternalFilesDir(null), APP_CONFIG)
+    candidates += File(context.filesDir, APP_CONFIG)
     return candidates
   }
 
@@ -237,7 +254,7 @@ class MlcEngine(private val context: Context) {
         .forEach { ids += it }
     }
     runCatching {
-      context.assets.open("mlc-app-config.json").bufferedReader().use { it.readText() }
+      context.assets.open(APP_CONFIG).bufferedReader().use { it.readText() }
     }.getOrNull()?.let { jsonText ->
       ids += parseModelIds(jsonText)
     }
@@ -315,8 +332,8 @@ class MlcEngine(private val context: Context) {
     url: String,
     onStatus: (String) -> Unit
   ): String {
-    if (!url.startsWith("http://") && !url.startsWith("https://")) {
-      throw IllegalArgumentException("Nur http/https URLs sind erlaubt.")
+    require(url.startsWith("http://") || url.startsWith("https://")) {
+      "Nur http/https URLs sind erlaubt."
     }
     val target = File(context.cacheDir, "mlc-model-download.zip")
     downloadFile(url, target, onStatus)
@@ -359,14 +376,14 @@ class MlcEngine(private val context: Context) {
     tempRoot.mkdirs()
     unzip(zipFile, tempRoot)
     val modelDir = findModelDir(tempRoot)
-      ?: throw IllegalStateException("Kein mlc-chat-config.json im Download gefunden.")
+      ?: throw IllegalStateException("Kein $CHAT_CONFIG im Download gefunden.")
     val modelId = readModelId(modelDir) ?: modelDir.name
-    val targetDir = File(context.filesDir, "models/llm/$modelId")
+    val targetDir = File(context.filesDir, "$MODELS_DIR/$modelId")
     if (targetDir.exists()) targetDir.deleteRecursively()
     copyDir(modelDir, targetDir)
     val modelLib = readModelLib(targetDir) ?: inferModelLibFromSo(targetDir)
     if (modelLib != null) {
-      File(targetDir, "model_lib.txt").writeText(modelLib)
+      File(targetDir, MODEL_LIB_TXT).writeText(modelLib)
     }
     maybePromoteModelLib(targetDir, modelLib)
     writePreferredAppConfig(modelId, modelLib)
@@ -378,13 +395,12 @@ class MlcEngine(private val context: Context) {
 
   private fun unzip(zipFile: File, dest: File) {
     ZipInputStream(BufferedInputStream(zipFile.inputStream())).use { zis ->
+      val destPath = dest.canonicalFile.toPath()
       var entry = zis.nextEntry
       while (entry != null) {
         val outFile = File(dest, entry.name)
-        val canonical = outFile.canonicalPath
-        if (!canonical.startsWith(dest.canonicalPath)) {
-          throw IllegalStateException("Unsafe zip entry: ${entry.name}")
-        }
+        val outPath = outFile.canonicalFile.toPath()
+        check(outPath.startsWith(destPath)) { "Unsafe zip entry: ${entry.name}" }
         if (entry.isDirectory) {
           outFile.mkdirs()
         } else {
@@ -400,9 +416,9 @@ class MlcEngine(private val context: Context) {
   }
 
   private fun findModelDir(root: File): File? {
-    if (File(root, "mlc-chat-config.json").exists()) return root
+    if (File(root, CHAT_CONFIG).exists()) return root
     root.walkTopDown().forEach { file ->
-      if (file.name == "mlc-chat-config.json") {
+      if (file.name == CHAT_CONFIG) {
         return file.parentFile
       }
     }
@@ -410,16 +426,16 @@ class MlcEngine(private val context: Context) {
   }
 
   private fun readModelId(modelDir: File): String? {
-    val cfg = File(modelDir, "mlc-chat-config.json")
+    val cfg = File(modelDir, CHAT_CONFIG)
     if (!cfg.exists()) return null
     val json = JSONObject(cfg.readText())
     return json.optString("model_id").takeIf { it.isNotBlank() }
   }
 
   private fun readModelLib(modelDir: File): String? {
-    val txt = File(modelDir, "model_lib.txt")
+    val txt = File(modelDir, MODEL_LIB_TXT)
     if (txt.exists()) return txt.readText().trim().takeIf { it.isNotBlank() }
-    val cfg = File(modelDir, "mlc-chat-config.json")
+    val cfg = File(modelDir, CHAT_CONFIG)
     if (!cfg.exists()) return null
     val json = JSONObject(cfg.readText())
     return json.optString("model_lib").takeIf { it.isNotBlank() }
@@ -441,9 +457,9 @@ class MlcEngine(private val context: Context) {
   }
 
   private fun writePreferredAppConfig(modelId: String, modelLib: String?) {
-    val root = File(context.filesDir, "models/llm")
+    val root = File(context.filesDir, MODELS_DIR)
     root.mkdirs()
-    val config = File(root, "mlc-app-config.json")
+    val config = File(root, APP_CONFIG)
     val entry = JSONObject().apply {
       put("model_id", modelId)
       if (!modelLib.isNullOrBlank()) {
@@ -470,16 +486,16 @@ class MlcEngine(private val context: Context) {
   }
 
   private fun ensureBundledModelsExtracted() {
-    val internalRoot = File(context.filesDir, "models/llm")
+    val internalRoot = File(context.filesDir, MODELS_DIR)
     val basePresent = File(internalRoot, baseModelId)
-      .resolve("mlc-chat-config.json")
+      .resolve(CHAT_CONFIG)
       .exists()
     if (basePresent) return
     val packModels = listAssetPackModels()
     if (packModels.isNotEmpty()) {
       for (model in packModels) {
         val targetDir = File(internalRoot, model.name)
-        if (File(targetDir, "mlc-chat-config.json").exists()) continue
+        if (File(targetDir, CHAT_CONFIG).exists()) continue
         Log.i(tag, "Extracting asset pack model ${model.name} to ${targetDir.absolutePath}")
         copyDir(model, targetDir)
       }
@@ -491,7 +507,7 @@ class MlcEngine(private val context: Context) {
     if (bundledModels.isEmpty()) return
     for (modelId in bundledModels) {
       val targetDir = File(internalRoot, modelId)
-      if (File(targetDir, "mlc-chat-config.json").exists()) continue
+      if (File(targetDir, CHAT_CONFIG).exists()) continue
       Log.i(tag, "Extracting bundled model $modelId to ${targetDir.absolutePath}")
       copyAssetDir("mlc/models/$modelId", targetDir)
     }
@@ -504,7 +520,7 @@ class MlcEngine(private val context: Context) {
       val assetsPath = location.assetsPath() ?: return emptyList()
       val root = File(assetsPath, "mlc/models")
       root.listFiles()
-        ?.filter { it.isDirectory && File(it, "mlc-chat-config.json").exists() }
+        ?.filter { it.isDirectory && File(it, CHAT_CONFIG).exists() }
         .orEmpty()
     } catch (t: Throwable) {
       Log.w(tag, "Asset pack lookup failed", t)
