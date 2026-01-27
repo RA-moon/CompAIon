@@ -16,7 +16,7 @@ class AssistantController(
   private val main = Handler(Looper.getMainLooper())
   private val io = Executors.newSingleThreadExecutor()
 
-  private val recorder = AudioRecorder()
+  private val recorder = AudioRecorder(context)
   private val whisper = WhisperBridge()
   private val tts = TtsEngine(context)
   private val mlc = MlcEngine(context)
@@ -108,7 +108,10 @@ class AssistantController(
     main.post { onState("INSTALLING MODEL") }
     try {
       modelFile.parentFile?.mkdirs()
-      if (modelFile.exists()) modelFile.delete()
+      if (modelFile.exists() && !modelFile.delete()) {
+        Log.w(tag, "Failed to delete stale model at ${modelFile.absolutePath}")
+        throw IllegalStateException("Unable to delete stale model file")
+      }
       val assetPath = "models/ggml-base.bin"
       try {
         Log.d(tag, "Copying asset $assetPath to ${modelFile.absolutePath}")

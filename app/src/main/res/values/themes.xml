@@ -16,4 +16,10 @@
         <item name="fontFamily">@font/special_elite</item>
         <item name="materialButtonStyle">@style/Widget.CompAIon.PrimaryButton</item>
     </style>
+
+    <style name="Theme.CompAIon.NoDisplay" parent="Theme.CompAIon">
+        <item name="android:windowNoDisplay">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
 </resources>

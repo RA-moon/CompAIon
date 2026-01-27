@@ -10,6 +10,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
 import android.view.Surface
@@ -502,7 +503,7 @@ class MainActivity : AppCompatActivity() {
       if (event.sensor.type != Sensor.TYPE_ROTATION_VECTOR) return
       SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
 
-      val rotation = display?.rotation ?: Surface.ROTATION_0
+      val rotation = currentDisplayRotation()
       val (axisX, axisY) = when (rotation) {
         Surface.ROTATION_90 -> SensorManager.AXIS_Z to SensorManager.AXIS_MINUS_X
         Surface.ROTATION_180 -> SensorManager.AXIS_MINUS_X to SensorManager.AXIS_MINUS_Z
@@ -518,6 +519,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
+  }
+
+  private fun currentDisplayRotation(): Int {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+      display?.rotation ?: Surface.ROTATION_0
+    } else {
+      @Suppress("DEPRECATION")
+      windowManager.defaultDisplay?.rotation ?: Surface.ROTATION_0
+    }
   }
 
   private fun applyGyroInput(pitchDeg: Float, rollDeg: Float) {
