@@ -45,3 +45,7 @@ app/libs/
 **/libs/
 app/src/main/assets/
 mlcmodel/src/main/assets/
+
+AGENTS.md
+*_AGENT.md
+.codex/AGENTS.template.md
