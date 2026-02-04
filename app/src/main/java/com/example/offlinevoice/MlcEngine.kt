@@ -29,12 +29,18 @@ class MlcEngine(private val context: Context) {
     private const val MODEL_LIB_TXT = "model_lib.txt"
   }
 
-  private val engine = MLCEngine()
+  private val engine by lazy { MLCEngine() }
   private var loadedKey: String? = null
   private var nativeRuntimeLoaded = false
   private val baseModelId = BuildConfig.MLC_BASE_MODEL_ID
   private val assetPackName = BuildConfig.MLC_ASSET_PACK
   private val fallbackZipUrl = BuildConfig.MLC_FALLBACK_ZIP_URL
+  private val preferredDevice = BuildConfig.MLC_DEVICE.trim().ifEmpty { "cpu" }
+
+  init {
+    System.setProperty("compaion.mlc.device", preferredDevice)
+    Log.i(tag, "MLC device preference set to $preferredDevice")
+  }
 
   private fun modelRoots(): List<File> {
     val roots = listOf(

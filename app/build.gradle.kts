@@ -15,9 +15,16 @@ val coroutinesAndroidVersion: String by project
 val mlcModelId = "Qwen2.5-0.5B-Instruct-q4f16_1-MLC"
 val mlcModelLib = "qwen2_q4f16_1_95967267c464e10967be161a66e856d4"
 val mlcAssetPackName = "mlcmodel"
+val mlcDevice = (project.findProperty("MLC_DEVICE") as String?)
+  ?.trim()
+  ?.ifBlank { "cpu" }
+  ?: "cpu"
 val mlcFallbackZipUrl = (project.findProperty("MLC_FALLBACK_ZIP_URL") as String?)
   ?.trim()
   .orEmpty()
+val mlcDeviceEscaped = mlcDevice
+  .replace("\\", "\\\\")
+  .replace("\"", "\\\"")
 val mlcFallbackZipUrlEscaped = mlcFallbackZipUrl
   .replace("\\", "\\\\")
   .replace("\"", "\\\"")
@@ -40,6 +47,7 @@ android {
     versionName = "0.4"
     buildConfigField("String", "MLC_BASE_MODEL_ID", "\"$mlcModelId\"")
     buildConfigField("String", "MLC_ASSET_PACK", "\"$mlcAssetPackName\"")
+    buildConfigField("String", "MLC_DEVICE", "\"$mlcDeviceEscaped\"")
     buildConfigField("String", "MLC_FALLBACK_ZIP_URL", "\"$mlcFallbackZipUrlEscaped\"")
 
     // MLC + modern devices: start with arm64 only
@@ -256,8 +264,8 @@ val installMlcModel by tasks.registering {
 
 tasks.register("installDebugWithModel") {
   group = "mlc"
-  description = "Install the debug build and push the configured MLC model."
-  dependsOn("installDebug", installMlcModel)
+  description = "Install the storeDebug build and push the configured MLC model."
+  dependsOn("installStoreDebug", installMlcModel)
 }
 
 dependencies {
